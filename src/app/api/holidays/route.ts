@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { between } from '@holiday-jp/holiday_jp';
+import holiday_jp from '@holiday-jp/holiday_jp';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const endDate = new Date(endDateStr);
 
     // Get holidays between the dates using the library
-    const holidays = between(startDate, endDate);
+    const holidays = holiday_jp.between(startDate, endDate);
 
     return NextResponse.json(holidays);
   } catch (error) {
