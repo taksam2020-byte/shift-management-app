@@ -15,7 +15,7 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/admin', {
+      const response = await fetch('/api/auth/admin', { // Correct API path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -27,7 +27,6 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'ログインに失敗しました。');
       }
 
-      // On success, store a generic admin user object
       localStorage.setItem('loggedInUser', JSON.stringify(data.user));
       router.push('/dashboard');
 

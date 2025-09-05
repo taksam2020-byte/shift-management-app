@@ -4,7 +4,7 @@ import Image from 'next/image';
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-100">
-      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 bg-white rounded-xl shadow-lg text-center">
+      <div className="w-full max-w-md p-6 sm:p-8 space-y-8 bg-white rounded-xl shadow-lg text-center">
         <div className="inline-block">
             <Image src="/logo.png" alt="Logo" width={96} height={96} />
         </div>
