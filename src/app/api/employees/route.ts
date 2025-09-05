@@ -38,9 +38,9 @@ export async function POST(request: Request) {
     );
 
     if (result.lastID) {
-        const { password, ...returnData } = employeeData;
+        // Do not return password data
+        const { ...returnData } = employeeData;
         return NextResponse.json({ id: result.lastID, ...returnData }, { status: 201 });
-    } else {
         throw new Error('Failed to get last inserted ID.');
     }
 

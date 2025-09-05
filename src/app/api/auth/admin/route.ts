@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       // Return an error for wrong password
       return NextResponse.json({ error: 'パスワードが違います。' }, { status: 401 });
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'An unknown error occurred' }, { status: 500 });
   }
 }

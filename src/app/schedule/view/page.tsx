@@ -68,8 +68,8 @@ export default function ViewSchedulePage() {
         const employeesData: Employee[] = await empRes.json();
         const shiftsData: Shift[] = await shiftRes.json();
         const notesData: DailyNote[] = await noteRes.json();
-        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: any) => ({...h, date: parseISO(h.date)}));
-        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: any) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
+        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
+        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: { date: string; note: string }) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
 
         employeesData.sort((a, b) => {
             if (a.id === loggedInUserId) return -1;

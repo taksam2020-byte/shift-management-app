@@ -118,8 +118,8 @@ export default function SchedulePage() {
         const requestsData: ShiftRequest[] = await reqRes.json();
         const shiftsData: Shift[] = await shiftRes.json();
         const notesData: DailyNote[] = await noteRes.json();
-        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: any) => ({...h, date: parseISO(h.date)}));
-        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: any) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
+        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
+        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: { date: string; note: string }) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
 
         const allHolidays = [...nationalHolidays, ...companyHolidays].sort((a, b) => a.date.getTime() - b.date.getTime());
 

@@ -84,7 +84,7 @@ export default function ManageEmployeesPage() {
     e.preventDefault();
     setError(null);
     
-    const employeeData: any = {
+    const employeeData: Omit<Employee, 'id' | 'hourly_wage'> & { hourly_wage: number; password?: string } = {
         name: formState.name,
         hourly_wage: Number(formState.hourly_wage),
         max_weekly_hours: formState.max_weekly_hours ? Number(formState.max_weekly_hours) : null,

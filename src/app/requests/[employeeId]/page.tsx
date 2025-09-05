@@ -2,7 +2,7 @@
 
 import { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { format, parseISO, startOfToday, getDay, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfToday, addMonths, subMonths } from 'date-fns';
 
 // --- Type Definitions ---
 interface ShiftRequest { id: number; date: string; notes: string; request_type: 'holiday' | 'work'; }
