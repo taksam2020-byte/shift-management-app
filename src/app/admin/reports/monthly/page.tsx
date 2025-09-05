@@ -1,0 +1,139 @@
+'use client';
+
+import { useState } from 'react';
+import { format } from 'date-fns';
+
+// --- Type Definitions ---
+interface ReportRow {
+  employee_name: string;
+  total_days: number;
+  total_hours: number;
+  total_pay: number;
+}
+
+// --- Helper ---
+const getDefaultDateRange = () => {
+    const today = new Date();
+    // Default to the current pay period (e.g., if today is Aug 26, period is Aug 11 to Sep 10)
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const start = new Date(year, month, 11);
+    // If today is before the 11th, the period started last month
+    if (today.getDate() < 11) {
+        start.setMonth(start.getMonth() - 1);
+    }
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 10);
+    
+    return {
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: format(end, 'yyyy-MM-dd'),
+    };
+};
+
+
+export default function MonthlyReportPage() {
+  const [reportData, setReportData] = useState<ReportRow[]>([]);
+  const [dateRange, setDateRange] = useState(getDefaultDateRange);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDateRange(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const generateReport = async () => {
+    setIsLoading(true);
+    setError(null);
+    setReportData([]);
+
+    try {
+      const params = new URLSearchParams({
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      });
+      const response = await fetch(`/api/reports/monthly?${params.toString()}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'レポートの生成に失敗しました。');
+      }
+      const data = await response.json();
+      setReportData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      
+
+      {/* Controls */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex-1">
+          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">開始日</label>
+          <input
+            type="date"
+            id="startDate"
+            name="startDate"
+            value={dateRange.startDate}
+            onChange={handleDateChange}
+            className="mt-1 block w-full form-input"
+          />
+        </div>
+        <div className="flex-1">
+          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">終了日</label>
+          <input
+            type="date"
+            id="endDate"
+            name="endDate"
+            value={dateRange.endDate}
+            onChange={handleDateChange}
+            className="mt-1 block w-full form-input"
+          />
+        </div>
+        <button
+          onClick={generateReport}
+          disabled={isLoading}
+          className="w-full sm:w-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+        >
+          {isLoading ? '生成中...' : 'レポート生成'}
+        </button>
+      </div>
+
+      {/* Report Table */}
+      {error && <p className="text-center text-red-500">{error}</p>}
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">従業員</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">出勤日数</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計時間</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">概算給与</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {reportData.length > 0 ? (
+              reportData.map((row, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap">{row.employee_name}</td>
+                  <td className="px-6 py-4 text-right">{row.total_days} 日</td>
+                  <td className="px-6 py-4 text-right">{row.total_hours.toFixed(2)} 時間</td>
+                  <td className="px-6 py-4 text-right">¥{Math.round(row.total_pay).toLocaleString()}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                  {isLoading ? '...' : '期間を選択してレポートを生成してください。'} 
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
