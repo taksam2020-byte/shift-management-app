@@ -16,16 +16,18 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('loggedInUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      router.push('/');
+    if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('loggedInUser');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          router.push('/');
+        }
     }
   }, [router]);
 
   if (!user) {
-    return <p>リダイレクト中...</p>;
+    return <p>読み込み中...</p>;
   }
 
   const requestLinkText = user?.request_type === 'work' ? '希望出勤日の提出' : '希望休の提出';

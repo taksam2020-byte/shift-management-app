@@ -38,9 +38,11 @@ export default function ViewSchedulePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('loggedInUser');
-    if (storedUser) {
-      setLoggedInUserId(JSON.parse(storedUser).id);
+    if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('loggedInUser');
+        if (storedUser) {
+          setLoggedInUserId(JSON.parse(storedUser).id);
+        }
     }
   }, []);
 
@@ -127,11 +129,10 @@ export default function ViewSchedulePage() {
               const holiday = holidays.find(h => format(h.date, 'yyyy-MM-dd') === dateStr);
               const isWeekendOrHoliday = dayOfWeek === '日' || dayOfWeek === '土' || !!holiday;
               const headcount = Object.values(schedule[dateStr] || {}).filter(v => v && v.trim() !== '').length;
-              const noteText = dailyNotes[dateStr] || (holiday ? '祝' : '');
               return (
                 <tr key={dateStr} className={isWeekendOrHoliday ? 'bg-gray-200' : ''}>
                   <td className={`border border-gray-300 p-2 whitespace-nowrap text-center w-28 sticky left-0 ${isWeekendOrHoliday ? 'font-semibold text-red-600 bg-gray-200' : 'bg-white'}`}>{format(day, 'M/d')} ({dayOfWeek})</td>
-                  <td className={`border border-gray-300 w-24 text-center p-1 ${isWeekendOrHoliday ? 'text-red-600' : ''}`}>{noteText}</td>
+                  <td className={`border border-gray-300 w-24 text-center p-1 ${isWeekendOrHoliday ? 'text-red-600' : ''}`}>{dailyNotes[dateStr] || holiday?.name || ''}</td>
                   <td className="border border-gray-300 p-2 text-center">{headcount > 0 ? headcount : ''}</td>
                   {employees.map((emp) => {
                     const cellValue = schedule[dateStr]?.[emp.id] || '';
