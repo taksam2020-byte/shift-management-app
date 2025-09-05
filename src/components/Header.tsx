@@ -104,7 +104,7 @@ export default function Header() {
                     <li>
                         <div className="flex justify-between items-center">
                             <span className="text-sm">{user.name} さん</span>
-                            <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">ログアウト</button
+                            <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">ログアウト</button>
                         </div>
                     </li>
                 </ul>
