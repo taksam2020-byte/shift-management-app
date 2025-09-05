@@ -2,23 +2,24 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
-// GET handler (unchanged)
+// GET handler to fetch a single employee by ID
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const db = await getDb();
     const employee = await db.get('SELECT * FROM employees WHERE id = ?', [params.id]);
+    
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
+
     return NextResponse.json(employee);
   } catch (error) {
     console.error(`Failed to fetch employee ${params.id}:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ error: 'Failed to fetch employee', details: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch employee' }, { status: 500 });
   }
 }
 
-// PUT handler to update an employee (FIXED)
+// PUT handler to update an employee
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const employeeData = await request.json();
@@ -53,12 +54,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
   } catch (error) {
     console.error(`Failed to update employee ${params.id}:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ error: 'Failed to update employee', details: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update employee' }, { status: 500 });
   }
 }
 
-// DELETE handler (unchanged)
+// DELETE handler to remove an employee
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const db = await getDb();
@@ -72,7 +72,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   } catch (error) {
     console.error(`Failed to delete employee ${params.id}:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ error: 'Failed to delete employee', details: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
   }
 }
