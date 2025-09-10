@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse, NextRequest } from 'next/server';
 import { getDb } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
