@@ -2,14 +2,15 @@ import { NextResponse, NextRequest } from 'next/server';
 import { getDb } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
-interface RouteParams {
-  params: { 
-    id: string 
+interface Context {
+  params: {
+    id: string;
   }
 }
 
 // GET handler to fetch a single employee by ID
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: Context) {
+  const { params } = context;
   try {
     const db = await getDb();
     const employee = await db.get('SELECT * FROM employees WHERE id = ?', [params.id]);
@@ -26,7 +27,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT handler to update an employee
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: Context) {
+  const { params } = context;
   try {
     const employeeData = await request.json();
     const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
@@ -65,7 +67,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE handler to remove an employee
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: Context) {
+  const { params } = context;
   try {
     const db = await getDb();
     const result = await db.run('DELETE FROM employees WHERE id = ?', [params.id]);
