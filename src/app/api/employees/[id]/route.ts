@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
 // GET handler to fetch a single employee by ID
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: any) {
   try {
     const db = await getDb();
     const employee = await db.get('SELECT * FROM employees WHERE id = ?', [params.id]);
@@ -14,15 +14,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json(employee);
   } catch (error) {
-    // 'params' might not be available in catch block if destructuring fails
-    // For robust error logging, consider how to access 'id' if needed
     console.error(`Failed to fetch employee:`, error);
     return NextResponse.json({ error: 'Failed to fetch employee' }, { status: 500 });
   }
 }
 
 // PUT handler to update an employee
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: any) {
   try {
     const employeeData = await request.json();
     const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
@@ -61,7 +59,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE handler to remove an employee
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: any) {
   try {
     const db = await getDb();
     const result = await db.run('DELETE FROM employees WHERE id = ?', [params.id]);
