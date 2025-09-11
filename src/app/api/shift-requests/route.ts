@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 
 // GET handler to fetch shift requests
 export async function GET(request: Request) {
@@ -9,26 +9,25 @@ export async function GET(request: Request) {
   const endDate = searchParams.get('endDate');
 
   try {
-    const db = await getDb();
-    // FIX: Select the new request_type column
-    let query = 'SELECT sr.id, sr.employee_id, sr.date, sr.notes, sr.request_type, e.name as employee_name FROM shift_requests sr JOIN employees e ON sr.employee_id = e.id';
+    let sql = 'SELECT sr.id, sr.employee_id, sr.date, sr.notes, sr.request_type, e.name as employee_name FROM shift_requests sr JOIN employees e ON sr.employee_id = e.id';
     const params: (string | number)[] = [];
     const conditions: string[] = [];
+    let paramIndex = 1;
 
     if (employeeId) {
-      conditions.push('sr.employee_id = ?');
+      conditions.push(`sr.employee_id = $${paramIndex++}`);
       params.push(employeeId);
     }
     if (startDate && endDate) {
-      conditions.push('sr.date BETWEEN ? AND ?');
+      conditions.push(`sr.date BETWEEN $${paramIndex++} AND $${paramIndex++}`);
       params.push(startDate, endDate);
     }
     if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
-    query += ' ORDER BY sr.date';
+    sql += ' ORDER BY sr.date';
 
-    const requests = await db.all(query, params);
+    const { rows: requests } = await query(sql, params);
     return NextResponse.json(requests);
   } catch (error) {
     console.error('Failed to fetch shift requests:', error);
@@ -41,26 +40,27 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const requestData = await request.json();
-    // FIX: Use request_type instead of is_off_request
     const { employee_id, date, notes, request_type } = requestData;
 
     if (!employee_id || !date || !request_type) {
       return NextResponse.json({ error: 'Employee ID, date, and request type are required' }, { status: 400 });
     }
 
-    const db = await getDb();
-    const existing = await db.get('SELECT id FROM shift_requests WHERE employee_id = ? AND date = ?', [employee_id, date]);
-    if (existing) {
+    const existingResult = await query('SELECT id FROM shift_requests WHERE employee_id = $1 AND date = $2', [employee_id, date]);
+    if (existingResult.rows.length > 0) {
         return NextResponse.json({ error: 'A request for this date already exists.' }, { status: 409 });
     }
 
-    const result = await db.run(
-      'INSERT INTO shift_requests (employee_id, date, notes, request_type) VALUES (?, ?, ?, ?)',
-      [employee_id, date, notes, request_type]
-    );
+    const insertSql = `
+      INSERT INTO shift_requests (employee_id, date, notes, request_type) 
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
+    `;
+    const result = await query(insertSql, [employee_id, date, notes, request_type]);
+    const newId = result.rows[0]?.id;
 
-    if (result.lastID) {
-        return NextResponse.json({ id: result.lastID, ...requestData }, { status: 201 });
+    if (newId) {
+        return NextResponse.json({ id: newId, ...requestData }, { status: 201 });
     } else {
         throw new Error('Failed to get last inserted ID.');
     }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE a shift request (unchanged)
+// DELETE a shift request
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -81,9 +81,8 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const db = await getDb();
-    const result = await db.run('DELETE FROM shift_requests WHERE id = ?', [id]);
-    if (result.changes === 0) {
+    const result = await query('DELETE FROM shift_requests WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
     return new NextResponse(null, { status: 204 });

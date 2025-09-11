@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
 // GET handler to fetch all employees, ordered by ID
 export async function GET() {
   try {
-    const db = await getDb();
-    const employees = await db.all('SELECT * FROM employees ORDER BY id');
+    // PostgreSQLでは `SELECT *` は安全ですが、返却するカラムを明示的に指定します。
+    const { rows: employees } = await query('SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at FROM employees ORDER BY id');
     return NextResponse.json(employees);
   } catch (error) {
     console.error('Failed to fetch employees:', error);
@@ -21,27 +21,31 @@ export async function POST(request: Request) {
     const employeeData = await request.json();
     const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
 
-    if (!name || !hourly_wage) {
-      return NextResponse.json({ error: 'Name and hourly wage are required' }, { status: 400 });
+    // 新規作成時はパスワードを必須とします。
+    if (!name || !hourly_wage || !password) {
+      return NextResponse.json({ error: '名前、時給、パスワードは必須です。' }, { status: 400 });
     }
 
-    let password_hash = null;
-    if (password) {
-      const saltRounds = 10;
-      password_hash = await bcrypt.hash(password, saltRounds);
-    }
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
 
-    const db = await getDb();
-    const result = await db.run(
-      'INSERT INTO employees (name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type || 'holiday']
-    );
+    // PostgreSQL形式のプレースホルダー($1, $2)とRETURNING idを使用します。
+    const sql = `
+      INSERT INTO employees (name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+    const params = [name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type || 'holiday'];
+    
+    const result = await query(sql, params);
+    const newId = result.rows[0]?.id;
 
-    if (result.lastID) {
-        // Do not return password data
-        const { ...returnData } = employeeData;
-        return NextResponse.json({ id: result.lastID, ...returnData }, { status: 201 });
-        throw new Error('Failed to get last inserted ID.');
+    if (newId) {
+        // パスワード情報は返却しません。
+        const { password, ...returnData } = employeeData;
+        return NextResponse.json({ id: newId, ...returnData }, { status: 201 });
+    } else {
+        throw new Error('従業員の作成に失敗しました。');
     }
 
   } catch (error) {

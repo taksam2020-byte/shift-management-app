@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 
 // Helper to parse time and calculate duration
 const calculateDuration = (start: string, end: string): number => {
@@ -22,8 +22,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const db = await getDb();
-    const shifts = await db.all(`
+    const sql = `
       SELECT
         e.id as employee_id,
         e.name as employee_name,
@@ -34,9 +33,10 @@ export async function GET(request: Request) {
       FROM employees e
       JOIN shifts s ON e.id = s.employee_id
       INNER JOIN actual_work_hours a ON s.id = a.shift_id
-      WHERE s.date BETWEEN ? AND ?
+      WHERE s.date BETWEEN $1 AND $2
       ORDER BY e.id, s.date
-    `, [startDate, endDate]);
+    `;
+    const { rows: shifts } = await query(sql, [startDate, endDate]);
 
     const report: Record<number, {
         employee_name: string;
@@ -59,7 +59,6 @@ export async function GET(request: Request) {
         const duration = calculateDuration(shift.actual_start_time, shift.actual_end_time);
         const breakHours = shift.break_hours ?? 1;
         
-        // If duration is 6 hours or more, consider the break. Otherwise, just use the duration.
         const netHours = duration >= 6 ? duration - breakHours : duration;
 
         if (netHours > 0) {

@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse, NextRequest } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
 // GET handler to fetch a single employee by ID
 export async function GET(request: NextRequest, { params }: any) {
   try {
-    const db = await getDb();
-    const employee = await db.get('SELECT * FROM employees WHERE id = ?', [params.id]);
-    
+    const sql = 'SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at FROM employees WHERE id = $1';
+    const result = await query(sql, [params.id]);
+    const employee = result.rows[0];
+
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
-
     return NextResponse.json(employee);
   } catch (error) {
     console.error(`Failed to fetch employee:`, error);
@@ -27,31 +27,46 @@ export async function PUT(request: NextRequest, { params }: any) {
     const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
 
     if (!name || !hourly_wage) {
-      return NextResponse.json({ error: 'Name and hourly wage are required' }, { status: 400 });
+      return NextResponse.json({ error: '名前と時給は必須です。' }, { status: 400 });
     }
 
-    const db = await getDb();
-    
-    let sql = 'UPDATE employees SET name = ?, hourly_wage = ?, max_weekly_hours = ?, max_weekly_days = ?, annual_income_limit = ?, default_work_hours = ?, request_type = ?';
-    const queryParams: (string | number | null)[] = [name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type];
+    const updateFields = [];
+    const queryParams = [];
+    let paramIndex = 1;
+
+    // 動的にクエリを構築
+    updateFields.push(`name = $${paramIndex++}`);
+    queryParams.push(name);
+    updateFields.push(`hourly_wage = $${paramIndex++}`);
+    queryParams.push(hourly_wage);
+    updateFields.push(`max_weekly_hours = $${paramIndex++}`);
+    queryParams.push(max_weekly_hours);
+    updateFields.push(`max_weekly_days = $${paramIndex++}`);
+    queryParams.push(max_weekly_days);
+    updateFields.push(`annual_income_limit = $${paramIndex++}`);
+    queryParams.push(annual_income_limit);
+    updateFields.push(`default_work_hours = $${paramIndex++}`);
+    queryParams.push(default_work_hours);
+    updateFields.push(`request_type = $${paramIndex++}`);
+    queryParams.push(request_type);
 
     if (password) {
       const saltRounds = 10;
       const password_hash = await bcrypt.hash(password, saltRounds);
-      sql += ', password_hash = ?';
+      updateFields.push(`password_hash = $${paramIndex++}`);
       queryParams.push(password_hash);
     }
 
-    sql += ' WHERE id = ?';
+    const sql = `UPDATE employees SET ${updateFields.join(', ')} WHERE id = $${paramIndex++}`;
     queryParams.push(params.id);
 
-    const result = await db.run(sql, queryParams);
+    const result = await query(sql, queryParams);
 
-    if (result.changes === 0) {
-        return NextResponse.json({ error: 'Employee not found or no changes made' }, { status: 404 });
+    if (result.rowCount === 0) {
+        return NextResponse.json({ error: '従業員が見つからないか、更新されませんでした。' }, { status: 404 });
     }
 
-    return NextResponse.json({ message: 'Employee updated successfully' });
+    return NextResponse.json({ message: '従業員情報を更新しました。' });
 
   } catch (error) {
     console.error(`Failed to update employee ${params.id}:`, error);
@@ -62,11 +77,11 @@ export async function PUT(request: NextRequest, { params }: any) {
 // DELETE handler to remove an employee
 export async function DELETE(request: NextRequest, { params }: any) {
   try {
-    const db = await getDb();
-    const result = await db.run('DELETE FROM employees WHERE id = ?', [params.id]);
+    const sql = 'DELETE FROM employees WHERE id = $1';
+    const result = await query(sql, [params.id]);
 
-    if (result.changes === 0) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: '従業員が見つかりません。' }, { status: 404 });
     }
 
     return new NextResponse(null, { status: 204 });

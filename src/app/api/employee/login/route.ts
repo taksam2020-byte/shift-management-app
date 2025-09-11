@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
 
 export async function POST(request: Request) {
@@ -10,11 +10,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '従業員IDとパスワードは必須です。' }, { status: 400 });
     }
 
-    const db = await getDb();
-    const employee = await db.get(
-      'SELECT id, name, password_hash FROM employees WHERE id = ?',
+    const result = await query(
+      'SELECT id, name, password_hash FROM employees WHERE id = $1',
       [employeeId]
     );
+    const employee = result.rows[0];
 
     if (!employee) {
       return NextResponse.json({ error: '従業員が見つかりません。' }, { status: 404 });

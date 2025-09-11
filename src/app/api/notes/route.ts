@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 
 // GET handler to fetch notes for a given date range
 export async function GET(request: Request) {
@@ -12,11 +12,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const db = await getDb();
-    const notes = await db.all(
-      'SELECT * FROM daily_notes WHERE date BETWEEN ? AND ?',
-      [startDate, endDate]
-    );
+    const sql = 'SELECT * FROM daily_notes WHERE date BETWEEN $1 AND $2';
+    const { rows: notes } = await query(sql, [startDate, endDate]);
     return NextResponse.json(notes);
   } catch (error) {
     console.error('Failed to fetch notes:', error);
@@ -34,12 +31,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     }
 
-    const db = await getDb();
-    // Use INSERT OR REPLACE for a simple upsert
-    await db.run(
-      'INSERT OR REPLACE INTO daily_notes (date, note) VALUES (?, ?)',
-      [date, note]
-    );
+    const sql = `
+      INSERT INTO daily_notes (date, note) 
+      VALUES ($1, $2) 
+      ON CONFLICT (date) 
+      DO UPDATE SET note = EXCLUDED.note
+    `;
+    
+    await query(sql, [date, note]);
 
     return NextResponse.json({ message: 'Note saved successfully' }, { status: 200 });
 

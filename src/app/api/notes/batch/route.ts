@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { getDb } from '@/lib/db.mjs'; // トランザクションのため、プールを取得
 
 // POST handler to create or update multiple daily notes (upsert)
 export async function POST(request: Request) {
+  const pool = getDb();
+  const client = await pool.connect(); // プールからクライアントを一つ取得
+
   try {
     const notesToSave: { date: string; note: string }[] = await request.json();
 
@@ -10,25 +13,30 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Expected an array of note objects' }, { status: 400 });
     }
 
-    const db = await getDb();
-    await db.run('BEGIN TRANSACTION');
+    await client.query('BEGIN'); // トランザクション開始
 
     try {
-        const stmt = await db.prepare('INSERT OR REPLACE INTO daily_notes (date, note) VALUES (?, ?)');
+        const sql = `
+            INSERT INTO daily_notes (date, note) 
+            VALUES ($1, $2) 
+            ON CONFLICT (date) 
+            DO UPDATE SET note = EXCLUDED.note
+        `;
         for (const item of notesToSave) {
-            await stmt.run(item.date, item.note);
+            await client.query(sql, [item.date, item.note]);
         }
-        await stmt.finalize();
-        await db.run('COMMIT');
+        await client.query('COMMIT'); // トランザクションをコミット
         return NextResponse.json({ message: 'Notes saved successfully' }, { status: 200 });
     } catch (innerError) {
-        await db.run('ROLLBACK');
-        throw innerError;
+        await client.query('ROLLBACK'); // エラー発生時はロールバック
+        throw innerError; // エラーを再スローして外側のcatchで処理
     }
 
   } catch (error) {
     console.error('Failed to save notes in batch:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json({ error: 'Failed to save notes', details: errorMessage }, { status: 500 });
+  } finally {
+    client.release(); // 最後に必ずクライアントをプールに返却
   }
 }

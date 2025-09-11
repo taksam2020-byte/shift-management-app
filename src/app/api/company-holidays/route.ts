@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { query } from '@/lib/db.mjs';
 
 // GET all company holidays
 export async function GET() {
   try {
-    const db = await getDb();
-    const holidays = await db.all('SELECT * FROM company_holidays ORDER BY date');
+    const { rows: holidays } = await query('SELECT * FROM company_holidays ORDER BY date');
     return NextResponse.json(holidays);
   } catch (error) {
     console.error('Failed to fetch company holidays:', error);
@@ -13,18 +12,24 @@ export async function GET() {
   }
 }
 
-// POST a new company holiday
+// POST a new company holiday (upsert)
 export async function POST(request: Request) {
   try {
     const { date, note } = await request.json();
     if (!date) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     }
-    const db = await getDb();
-    await db.run(
-      'INSERT OR REPLACE INTO company_holidays (date, note) VALUES (?, ?)',
-      [date, note || '']
-    );
+    
+    // PostgreSQL 'upsert' syntax
+    const sql = `
+      INSERT INTO company_holidays (date, note) 
+      VALUES ($1, $2) 
+      ON CONFLICT (date) 
+      DO UPDATE SET note = EXCLUDED.note
+    `;
+    
+    await query(sql, [date, note || '']);
+    
     return NextResponse.json({ message: 'Company holiday saved' }, { status: 201 });
   } catch (error) {
     console.error('Failed to save company holiday:', error);
@@ -42,9 +47,8 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const db = await getDb();
-    const result = await db.run('DELETE FROM company_holidays WHERE date = ?', [date]);
-    if (result.changes === 0) {
+    const result = await query('DELETE FROM company_holidays WHERE date = $1', [date]);
+    if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Holiday not found' }, { status: 404 });
     }
     return new NextResponse(null, { status: 204 });

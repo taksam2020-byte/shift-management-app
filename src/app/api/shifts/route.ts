@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db.mjs';
+import { getDb, query } from '@/lib/db.mjs';
 
 // GET handler to fetch shifts, filtered by date range and/or employee
 export async function GET(request: Request) {
@@ -9,9 +9,7 @@ export async function GET(request: Request) {
   const employeeId = searchParams.get('employeeId');
 
   try {
-    const db = await getDb();
-    // The query now joins with actual_work_hours to get submitted data, including break_hours
-    let query = `
+    let sql = `
       SELECT 
         s.id, s.employee_id, s.date, s.start_time, s.end_time,
         a.id as actual_id, a.actual_start_time, a.actual_end_time, a.break_hours
@@ -20,23 +18,24 @@ export async function GET(request: Request) {
     `;
     const params: (string | number)[] = [];
     const conditions: string[] = [];
+    let paramIndex = 1;
 
     if (startDate && endDate) {
-      conditions.push('s.date BETWEEN ? AND ?');
+      conditions.push(`s.date BETWEEN $${paramIndex++} AND $${paramIndex++}`);
       params.push(startDate, endDate);
     }
     if (employeeId) {
-      conditions.push('s.employee_id = ?');
+      conditions.push(`s.employee_id = $${paramIndex++}`);
       params.push(employeeId);
     }
 
     if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY s.date, s.start_time';
+    sql += ' ORDER BY s.date, s.start_time';
 
-    const shifts = await db.all(query, params);
+    const { rows: shifts } = await query(sql, params);
     return NextResponse.json(shifts);
   } catch (error) {
     console.error('Failed to fetch shifts:', error);
@@ -47,6 +46,9 @@ export async function GET(request: Request) {
 
 // POST handler to save/update multiple shifts
 export async function POST(request: Request) {
+  const pool = getDb();
+  const client = await pool.connect(); // トランザクションのためにクライアントを取得
+
   try {
     const shiftsToSave: { employee_id: number; date: string; start_time: string; end_time: string; }[] = await request.json();
 
@@ -54,38 +56,38 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Expected an array of shift objects' }, { status: 400 });
     }
 
-    const db = await getDb();
-    await db.run('BEGIN TRANSACTION');
+    await client.query('BEGIN'); // トランザクション開始
 
     try {
         for (const shift of shiftsToSave) {
             const { employee_id, date, start_time, end_time } = shift;
 
-            const existingShift = await db.get(
-                'SELECT id FROM shifts WHERE employee_id = ? AND date = ?',
+            const existingResult = await client.query(
+                'SELECT id FROM shifts WHERE employee_id = $1 AND date = $2',
                 [employee_id, date]
             );
+            const existingShift = existingResult.rows[0];
 
             if (existingShift) {
                 if (!start_time || !end_time) {
-                    await db.run('DELETE FROM shifts WHERE id = ?', [existingShift.id]);
+                    await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
                 } else {
-                    await db.run(
-                        'UPDATE shifts SET start_time = ?, end_time = ? WHERE id = ?',
+                    await client.query(
+                        'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
                         [start_time, end_time, existingShift.id]
                     );
                 }
             } else if (start_time && end_time) {
-                await db.run(
-                    'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES (?, ?, ?, ?)',
+                await client.query(
+                    'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)',
                     [employee_id, date, start_time, end_time]
                 );
             }
         }
-        await db.run('COMMIT');
+        await client.query('COMMIT'); // 正常終了時にコミット
         return NextResponse.json({ message: 'Shifts saved successfully' }, { status: 200 });
     } catch (innerError) {
-        await db.run('ROLLBACK');
+        await client.query('ROLLBACK'); // エラー発生時にロールバック
         throw innerError;
     }
 
@@ -93,5 +95,7 @@ export async function POST(request: Request) {
     console.error('Failed to save shifts:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json({ error: 'Failed to save shifts', details: errorMessage }, { status: 500 });
+  } finally {
+      client.release(); // 最後に必ずクライアントをプールに返却
   }
 }
