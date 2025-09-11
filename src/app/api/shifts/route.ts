@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getDb, query } from '@/lib/db.mjs';
 
-// GET handler - TEMPORARILY SIMPLIFIED FOR DEBUGGING
+// GET handler, rewritten with robust date filtering
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
   const employeeId = searchParams.get('employeeId');
-
-  // Add detailed logging to see what parameters are being received
-  console.log(`--- [DEBUG] GET /api/shifts received: startDate=${startDate}, endDate=${endDate}, employeeId=${employeeId} ---`);
 
   try {
     const baseSql = `
@@ -23,34 +20,32 @@ export async function GET(request: Request) {
     let sql = '';
     let params: (string | number)[] = [];
 
-    // Temporarily ignore date range for admin/all-shifts view to test data retrieval
-    if (employeeId) {
-      // This is for "My Shifts", which works. Keep it as is.
+    // Use >= and <= for maximum compatibility with date filtering.
+    if (startDate && endDate && employeeId) {
+      sql = baseSql + ' WHERE s.date >= $1::date AND s.date <= $2::date AND s.employee_id = $3 ORDER BY s.date, s.start_time';
+      params = [startDate, endDate, employeeId];
+    } else if (startDate && endDate) {
+      sql = baseSql + ' WHERE s.date >= $1::date AND s.date <= $2::date ORDER BY s.date, s.start_time';
+      params = [startDate, endDate];
+    } else if (employeeId) {
       sql = baseSql + ' WHERE s.employee_id = $1 ORDER BY s.date, s.start_time';
       params = [employeeId];
     } else {
-      // This is for Admin/All-Shifts view. Fetch ALL shifts, ignoring dates, for this test.
       sql = baseSql + ' ORDER BY s.date, s.start_time';
       params = [];
     }
 
-    console.log(`[DEBUG] Executing SQL: ${sql}`);
-    console.log(`[DEBUG] With Params: ${JSON.stringify(params)}`);
-
     const { rows: shifts } = await query(sql, params);
-
-    console.log(`[DEBUG] Query returned ${shifts.length} rows.`);
-
     return NextResponse.json(shifts);
     
   } catch (error) {
-    console.error('[DEBUG] Failed to fetch shifts:', error);
+    console.error('Failed to fetch shifts:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json({ error: 'Failed to fetch shifts', details: errorMessage }, { status: 500 });
   }
 }
 
-// POST handler - remains unchanged as it is working correctly
+// POST handler - remains unchanged
 export async function POST(request: Request) {
   const pool = getDb();
   const client = await pool.connect();
