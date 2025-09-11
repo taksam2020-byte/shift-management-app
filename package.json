@@ -4,11 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/init-pg-db.mjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:init": "node scripts/init-pg-db.mjs",
-    "postinstall": "node scripts/init-pg-db.mjs"
+    "db:init": "node scripts/init-pg-db.mjs"
   },
   "dependencies": {
     "@holiday-jp/holiday_jp": "^2.5.1",
