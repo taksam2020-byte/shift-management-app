@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     let paramIndex = 1;
 
     if (startDate && endDate) {
-      conditions.push(`s.date BETWEEN $${paramIndex++} AND $${paramIndex++}`);
+      conditions.push(`s.date BETWEEN ${paramIndex++}::date AND ${paramIndex++}::date`);
       params.push(startDate, endDate);
     }
     if (employeeId) {
