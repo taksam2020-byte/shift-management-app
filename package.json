@@ -6,17 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:init": "node scripts/init-pg-db.mjs",
+    "postinstall": "node scripts/init-pg-db.mjs"
   },
   "dependencies": {
     "@holiday-jp/holiday_jp": "^2.5.1",
+    "@types/pg": "^8.15.5",
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
     "next": "15.5.2",
+    "pg": "^8.16.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

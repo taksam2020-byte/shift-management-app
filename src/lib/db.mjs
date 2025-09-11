@@ -1,18 +1,40 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import pkg from 'pg';
+const { Pool } = pkg;
 
-const dbPath = './db/shift.db';
+let pool;
 
-let db = null;
+function getDbPool() {
+  if (!pool) {
+    const connectionString = process.env.POSTGRES_URL;
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL environment variable is not set.');
+    }
 
-export async function getDb() {
-  if (!db) {
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
+    console.log('Creating new PostgreSQL connection pool.');
+    pool = new Pool({
+      connectionString,
+      ssl: {
+        rejectUnauthorized: false // Required for Neon DB connections
+      }
     });
-    // FIX: Enable foreign key constraints to ensure cascading deletes work
-    await db.exec('PRAGMA foreign_keys = ON;');
   }
-  return db;
+  return pool;
+}
+
+// The query function can be used to run queries directly.
+export async function query(text, params) {
+  const pool = getDbPool();
+  const client = await pool.connect();
+  try {
+    const res = await client.query(text, params);
+    return res;
+  } finally {
+    client.release();
+  }
+}
+
+// getDb is kept for compatibility with the existing API structure if needed,
+// though using the query function directly is often cleaner.
+export function getDb() {
+  return getDbPool();
 }
