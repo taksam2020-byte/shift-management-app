@@ -94,6 +94,26 @@ async function createTables() {
     `);
     console.log('Table "daily_notes" created or already exists.');
 
+    // --- Schema Migration: Add break_hours if it doesn't exist ---
+    const columnCheck = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+        AND table_name = 'actual_work_hours' 
+        AND column_name = 'break_hours'
+    `);
+
+    if (columnCheck.rows.length === 0) {
+      console.log('Migrating schema: Adding "break_hours" column to "actual_work_hours" table...');
+      await client.query(`
+        ALTER TABLE actual_work_hours
+        ADD COLUMN break_hours NUMERIC(4, 2) DEFAULT 1.0
+      `);
+      console.log('SUCCESS: "break_hours" column added.');
+    } else {
+      console.log('INFO: "break_hours" column already exists. No migration needed.');
+    }
+
     // Commit transaction
     await client.query('COMMIT');
     console.log('Successfully created all tables!');
