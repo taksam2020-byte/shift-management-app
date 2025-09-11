@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, query } from '@/lib/db.mjs';
 
-// GET handler to fetch shifts, filtered by date range and/or employee
+// GET handler to fetch shifts, rewritten for clarity and correctness
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
@@ -9,34 +9,35 @@ export async function GET(request: Request) {
   const employeeId = searchParams.get('employeeId');
 
   try {
-    let sql = `
+    const baseSql = `
       SELECT 
         s.id, s.employee_id, s.date, s.start_time, s.end_time,
         a.id as actual_id, a.actual_start_time, a.actual_end_time, a.break_hours
       FROM shifts s
       LEFT JOIN actual_work_hours a ON s.id = a.shift_id
     `;
-    const params: (string | number)[] = [];
-    const conditions: string[] = [];
-    let paramIndex = 1;
+    
+    let sql = '';
+    let params: (string | number)[] = [];
 
-    if (startDate && endDate) {
-      conditions.push(`s.date BETWEEN ${paramIndex++}::date AND ${paramIndex++}::date`);
-      params.push(startDate, endDate);
+    // 4つのケースに分けて、それぞれに最適なクエリを静的に定義
+    if (startDate && endDate && employeeId) {
+      sql = baseSql + ' WHERE s.date BETWEEN $1::date AND $2::date AND s.employee_id = $3 ORDER BY s.date, s.start_time';
+      params = [startDate, endDate, employeeId];
+    } else if (startDate && endDate) {
+      sql = baseSql + ' WHERE s.date BETWEEN $1::date AND $2::date ORDER BY s.date, s.start_time';
+      params = [startDate, endDate];
+    } else if (employeeId) {
+      sql = baseSql + ' WHERE s.employee_id = $1 ORDER BY s.date, s.start_time';
+      params = [employeeId];
+    } else {
+      sql = baseSql + ' ORDER BY s.date, s.start_time';
+      params = [];
     }
-    if (employeeId) {
-      conditions.push(`s.employee_id = $${paramIndex++}`);
-      params.push(employeeId);
-    }
-
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    sql += ' ORDER BY s.date, s.start_time';
 
     const { rows: shifts } = await query(sql, params);
     return NextResponse.json(shifts);
+    
   } catch (error) {
     console.error('Failed to fetch shifts:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -44,10 +45,10 @@ export async function GET(request: Request) {
   }
 }
 
-// POST handler to save/update multiple shifts
+// POST handler to save/update multiple shifts (This part was already correct)
 export async function POST(request: Request) {
   const pool = getDb();
-  const client = await pool.connect(); // トランザクションのためにクライアントを取得
+  const client = await pool.connect();
 
   try {
     const shiftsToSave: { employee_id: number; date: string; start_time: string; end_time: string; }[] = await request.json();
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Expected an array of shift objects' }, { status: 400 });
     }
 
-    await client.query('BEGIN'); // トランザクション開始
+    await client.query('BEGIN');
 
     try {
         for (const shift of shiftsToSave) {
@@ -84,10 +85,10 @@ export async function POST(request: Request) {
                 );
             }
         }
-        await client.query('COMMIT'); // 正常終了時にコミット
+        await client.query('COMMIT');
         return NextResponse.json({ message: 'Shifts saved successfully' }, { status: 200 });
     } catch (innerError) {
-        await client.query('ROLLBACK'); // エラー発生時にロールバック
+        await client.query('ROLLBACK');
         throw innerError;
     }
 
@@ -96,6 +97,6 @@ export async function POST(request: Request) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json({ error: 'Failed to save shifts', details: errorMessage }, { status: 500 });
   } finally {
-      client.release(); // 最後に必ずクライアントをプールに返却
+      client.release();
   }
 }
