@@ -138,8 +138,15 @@ export default function SchedulePage() {
             }
         });
         shiftsData.forEach(shift => {
-          if (!initialSchedule[shift.date]) initialSchedule[shift.date] = {};
-          initialSchedule[shift.date][shift.employee_id] = shift.start_time && shift.end_time ? `${shift.start_time}-${shift.end_time}` : '';
+          if (!shift.date) return;
+          const dateStr = shift.date.substring(0, 10); // YYYY-MM-DD形式に整形
+          const startTime = shift.start_time ? shift.start_time.substring(0, 5) : null; // HH:MM形式に整形
+          const endTime = shift.end_time ? shift.end_time.substring(0, 5) : null; // HH:MM形式に整形
+
+          if (!initialSchedule[dateStr]) {
+            initialSchedule[dateStr] = {};
+          }
+          initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
         });
         setSchedule(initialSchedule);
         validateSchedule(initialSchedule, employeesData);
