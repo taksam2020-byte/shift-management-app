@@ -116,7 +116,7 @@ export default function ViewSchedulePage() {
       }
     };
     fetchData();
-  }, [currentDate, loggedInUserId]);
+  }, [currentDate, loggedInUser]);
 
   if (isLoading) return <p className="p-4 text-center">スケジュールを読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
