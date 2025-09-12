@@ -138,13 +138,8 @@ export default function SchedulePage() {
             }
         });
         shiftsData.forEach(shift => {
-          // start_timeとend_timeが両方存在する場合のみ、スケジュールを上書きする
-          if (shift.start_time && shift.end_time) {
-            if (!initialSchedule[shift.date]) {
-              initialSchedule[shift.date] = {};
-            }
-            initialSchedule[shift.date][shift.employee_id] = `${shift.start_time}-${shift.end_time}`;
-          }
+          if (!initialSchedule[shift.date]) initialSchedule[shift.date] = {};
+          initialSchedule[shift.date][shift.employee_id] = shift.start_time && shift.end_time ? `${shift.start_time}-${shift.end_time}` : '';
         });
         setSchedule(initialSchedule);
         validateSchedule(initialSchedule, employeesData);

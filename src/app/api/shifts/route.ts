@@ -70,18 +70,14 @@ export async function POST(request: Request) {
             const existingShift = existingResult.rows[0];
 
             if (existingShift) {
-                if (!start_time || !end_time) {
-                    await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
-                } else {
-                    await client.query(
-                        'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
-                        [start_time, end_time, existingShift.id]
-                    );
-                }
-            } else if (start_time && end_time) {
+                await client.query(
+                    'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
+                    [start_time || null, end_time || null, existingShift.id]
+                );
+            } else {
                 await client.query(
                     'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)',
-                    [employee_id, date, start_time, end_time]
+                    [employee_id, date, start_time || null, end_time || null]
                 );
             }
         }
