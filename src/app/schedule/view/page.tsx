@@ -10,6 +10,12 @@ interface DailyNote { date: string; note: string; }
 interface Holiday { date: Date; name: string; }
 type ScheduleState = Record<string, Record<number, string>>;
 
+interface User {
+  id: number;
+  name: string;
+  isAdmin: boolean;
+}
+
 const getPayPeriodInterval = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -27,7 +33,7 @@ const getInitialDateForPayPeriod = () => {
 };
 
 export default function ViewSchedulePage() {
-  const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [currentDate, setCurrentDate] = useState(getInitialDateForPayPeriod());
   const [days, setDays] = useState<Date[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -41,14 +47,14 @@ export default function ViewSchedulePage() {
     if (typeof window !== 'undefined') {
         const storedUser = localStorage.getItem('loggedInUser');
         if (storedUser) {
-          setLoggedInUserId(JSON.parse(storedUser).id);
+          setLoggedInUser(JSON.parse(storedUser));
         }
     }
   }, []);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!loggedInUserId) return;
+      if (!loggedInUser) return;
       setIsLoading(true);
       setError(null);
       const { start, end } = getPayPeriodInterval(currentDate);
@@ -71,11 +77,16 @@ export default function ViewSchedulePage() {
         const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
         const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: { date: string; note: string }) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
 
-        employeesData.sort((a, b) => {
-            if (a.id === loggedInUserId) return -1;
-            if (b.id === loggedInUserId) return 1;
-            return a.id - b.id;
-        });
+        // Sort employees based on user type
+        if (loggedInUser && !loggedInUser.isAdmin) {
+            employeesData.sort((a, b) => {
+                if (a.id === loggedInUser.id) return -1;
+                if (b.id === loggedInUser.id) return 1;
+                return a.id - b.id;
+            });
+        } else {
+            employeesData.sort((a, b) => a.id - b.id);
+        }
         setEmployees(employeesData);
 
         setHolidays([...nationalHolidays, ...companyHolidays].sort((a, b) => a.date.getTime() - b.date.getTime()));
