@@ -256,7 +256,7 @@ export default function SchedulePage() {
                   <td className="border border-gray-300 w-24"><input type="text" value={dailyNotes[dateStr] || holiday?.name || ''} onChange={(e) => handleNoteChange(dateStr, e.target.value)} className={`w-full p-1 bg-transparent focus:outline-none focus:bg-white text-center ${isWeekendOrHoliday ? 'text-red-600' : ''}`}/></td>
                   <td className="border border-gray-300 p-2 text-center">{headcount > 0 ? headcount : ''}</td>
                   {employees.map((emp) => {
-                    const request = requests.find(r => r.employee_id === emp.id && r.date === dateStr);
+                    const request = requests.find(r => r.employee_id === emp.id && r.date.substring(0, 10) === dateStr);
                     const cellValue = schedule[dateStr]?.[emp.id] || '';
                     const validationError = validationErrors[dateStr]?.[emp.id];
                     return (

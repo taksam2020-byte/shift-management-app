@@ -70,8 +70,8 @@ export default function MonthlyReportPage() {
       
 
       {/* Controls */}
-      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-center gap-4">
-        <div className="flex-1">
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-end gap-4 justify-between">
+        <div className="w-full sm:w-auto">
           <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">開始日</label>
           <input
             type="date"
@@ -82,7 +82,7 @@ export default function MonthlyReportPage() {
             className="mt-1 block w-full form-input"
           />
         </div>
-        <div className="flex-1">
+        <div className="w-full sm:w-auto">
           <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">終了日</label>
           <input
             type="date"

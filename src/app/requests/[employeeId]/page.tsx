@@ -162,13 +162,20 @@ export default function SubmitRequestPage() {
                 <li key={req.id} className="py-3 flex justify-between items-center">
                   <div>
                     <p className="text-md font-medium">{format(parseISO(req.date), 'yyyy年 M月 d日')} <span className={`text-xs font-bold px-2 py-1 rounded-full ${req.request_type === 'work' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>{req.request_type === 'work' ? '出勤希望' : '休日希望'}</span></p>
-                    {req.notes && <p className="text-sm text-gray-500 pl-1">{req.notes}</p>}
                   </div>
                   <button onClick={() => handleDeleteRequest(req.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">取り下げ</button>
                 </li>
               )) : (
                 <p className="text-gray-500">この期間に提出された希望はありません。</p>
               )}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+  )}
             </ul>
           </div>
         </div>
