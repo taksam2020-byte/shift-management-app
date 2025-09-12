@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { format, parseISO, startOfToday, addMonths, subMonths } from 'date-fns';
 
 // --- Type Definitions ---
-interface ShiftRequest { id: number; date: string; notes: string; request_type: 'holiday' | 'work'; }
+interface ShiftRequest { id: number; date: string; request_type: 'holiday' | 'work'; }
 interface Employee { id: number; name: string; request_type: 'holiday' | 'work'; }
 interface Shift { date: string; }
 
@@ -39,7 +39,6 @@ export default function SubmitRequestPage() {
 
   // Form state
   const [date, setDate] = useState('');
-  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     const fetchPageData = async () => {
@@ -71,8 +70,8 @@ export default function SubmitRequestPage() {
 
   const blockedDates = useMemo(() => {
     const dateSet = new Set<string>();
-    shifts.forEach(shift => dateSet.add(shift.date));
-    requests.forEach(req => dateSet.add(req.date));
+    shifts.forEach(shift => dateSet.add(shift.date.substring(0, 10)));
+    requests.forEach(req => dateSet.add(req.date.substring(0, 10)));
     return dateSet;
   }, [shifts, requests]);
 
@@ -95,14 +94,13 @@ export default function SubmitRequestPage() {
       const response = await fetch('/api/shift-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: parseInt(employeeId), date, notes, request_type: employee.request_type }),
+        body: JSON.stringify({ employee_id: parseInt(employeeId), date, request_type: employee.request_type }),
       });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || '提出に失敗しました。');
       }
       setDate('');
-      setNotes('');
       const reqRes = await fetch(`/api/shift-requests?employeeId=${employeeId}`);
       setRequests(await reqRes.json());
     } catch (err) {
@@ -139,10 +137,6 @@ export default function SubmitRequestPage() {
               <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} min={todayStr} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
               {dateError && <p className="text-red-500 text-sm mt-1">{dateError}</p>}
             </div>
-            <div className="mb-4">
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700">備考 (任意)</label>
-              <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
-            </div>
             <button type="submit" disabled={!!isDateBlocked || !date} className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400">提出する</button>
             {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
           </form>
@@ -168,14 +162,6 @@ export default function SubmitRequestPage() {
               )) : (
                 <p className="text-gray-500">この期間に提出された希望はありません。</p>
               )}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-  )}
             </ul>
           </div>
         </div>
