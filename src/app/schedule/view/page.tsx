@@ -82,8 +82,10 @@ export default function ViewSchedulePage() {
 
         const newSchedule: ScheduleState = {};
         shiftsData.forEach(shift => {
-          if (!newSchedule[shift.date]) newSchedule[shift.date] = {};
-          newSchedule[shift.date][shift.employee_id] = shift.start_time && shift.end_time ? `${shift.start_time}-${shift.end_time}` : '';
+          if (shift.start_time && shift.end_time) {
+            if (!newSchedule[shift.date]) newSchedule[shift.date] = {};
+            newSchedule[shift.date][shift.employee_id] = `${shift.start_time}-${shift.end_time}`;
+          }
         });
         setSchedule(newSchedule);
 
