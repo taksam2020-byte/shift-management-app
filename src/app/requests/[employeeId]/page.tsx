@@ -146,7 +146,7 @@ export default function SubmitRequestPage() {
             <h2 className="text-xl font-semibold">提出済みリスト</h2>
             <div className="flex items-center gap-1">
                 <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-2 py-1 bg-gray-200 rounded text-sm">前月</button>
-                <span className="text-sm font-semibold w-24 text-center">({format(start, 'M/d')}-{format(end, 'M/d')})</span>
+                <span className="text-sm font-semibold w-24 text-center">{format(start, 'M/d')}-{format(end, 'M/d')}</span>
                 <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-2 py-1 bg-gray-200 rounded text-sm">次月</button>
             </div>
           </div>

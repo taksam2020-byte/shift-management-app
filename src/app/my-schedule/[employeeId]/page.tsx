@@ -195,7 +195,7 @@ export default function MySchedulePage() {
 
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">前月</button>
-        <h2 className="text-xl font-semibold">({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</h2>
+        <h2 className="text-xl font-semibold">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</h2>
         <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">次月</button>
       </div>
 
