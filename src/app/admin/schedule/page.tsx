@@ -13,6 +13,7 @@ interface Holiday { date: Date; name: string; }
 type ScheduleState = Record<string, Record<number, string>>;
 type ValidationErrorState = Record<string, Record<number, string | null>>;
 type DailyNoteState = Record<string, string>;
+type AnnualIncomeState = Record<number, { totalIncome: number; remainingDays: number | null; }>;
 
 // --- Helper Functions ---
 const getPayPeriodInterval = (date: Date) => {
