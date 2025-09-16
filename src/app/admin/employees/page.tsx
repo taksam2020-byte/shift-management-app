@@ -12,6 +12,8 @@ interface Employee {
   max_weekly_days?: number | null;
   annual_income_limit?: number | null;
   default_work_hours?: string | null;
+  initial_income?: number | null;
+  initial_income_year?: number | null;
 }
 
 const initialFormState = {
