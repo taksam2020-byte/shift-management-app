@@ -55,6 +55,7 @@ export default function SchedulePage() {
   const [dailyNotes, setDailyNotes] = useState<DailyNoteState>({});
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationErrorState>({});
+  const [annualIncomes, setAnnualIncomes] = useState<AnnualIncomeState>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
