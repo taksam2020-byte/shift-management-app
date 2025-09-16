@@ -13,6 +13,7 @@ export default function EmployeeLoginPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -52,12 +53,16 @@ export default function EmployeeLoginPage() {
         const response = await fetch('/api/employee/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password }),
+            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
         });
 
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.error || 'ログインに失敗しました。');
+        }
+
+        if (data.token) {
+            localStorage.setItem('authToken', data.token);
         }
 
         const fullEmployeeData = employees.find(emp => emp.id === parseInt(selectedEmployeeId, 10));
@@ -114,6 +119,19 @@ export default function EmployeeLoginPage() {
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     required
                 />
+            </div>
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                ログイン状態を維持する
+              </label>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button

@@ -141,6 +141,18 @@ async function createTables() {
       console.log('INFO: "hourly_wage" column already exists.');
     }
 
+    // --- Create Auth Tokens Table ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS auth_tokens (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Table "auth_tokens" created or already exists.');
+
     // Commit transaction
     await client.query('COMMIT');
     console.log('Successfully created all tables!');

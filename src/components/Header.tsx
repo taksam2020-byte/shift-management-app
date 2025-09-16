@@ -33,6 +33,7 @@ export default function Header() {
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
+    localStorage.removeItem('authToken'); // Remove the auth token
     setUser(null);
     router.push('/');
   };
