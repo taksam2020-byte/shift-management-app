@@ -34,7 +34,7 @@ const getDefaultDateRange = () => {
 export default function MonthlyReportPage() {
   const [reportData, setReportData] = useState<ReportRow[]>([]);
   const [dateRange, setDateRange] = useState(getDefaultDateRange);
-  const [useSchedule, setUseSchedule] = useState(true);
+  const [useSchedule, setUseSchedule] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
