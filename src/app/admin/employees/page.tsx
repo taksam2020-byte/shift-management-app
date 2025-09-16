@@ -26,6 +26,8 @@ const initialFormState = {
   annual_income_limit: '',
   default_work_hours: '',
   request_type: 'holiday' as 'holiday' | 'work',
+  initial_income: '',
+  initial_income_year: new Date().getFullYear().toString(),
 };
 
 export default function ManageEmployeesPage() {
@@ -73,6 +75,8 @@ export default function ManageEmployeesPage() {
       annual_income_limit: String(emp.annual_income_limit || ''),
       default_work_hours: emp.default_work_hours || '',
       request_type: emp.request_type || 'holiday',
+      initial_income: String(emp.initial_income || ''),
+      initial_income_year: String(emp.initial_income_year || new Date().getFullYear()),
     });
     setIsEditing(true);
   };
@@ -98,6 +102,10 @@ export default function ManageEmployeesPage() {
         initial_income_year: formState.initial_income_year ? Number(formState.initial_income_year) : null,
         password: formState.password || undefined,
     };
+
+    if (!employeeData.password) {
+        delete employeeData.password;
+    }
 
     const url = isEditing ? `/api/employees/${formState.id}` : '/api/employees';
     const method = isEditing ? 'PUT' : 'POST';
@@ -181,6 +189,16 @@ export default function ManageEmployeesPage() {
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">年収上限 (円, 任意)</label>
               <input type="number" name="annual_income_limit" value={formState.annual_income_limit} onChange={handleInputChange} className="mt-1 w-full form-input" />
+            </div>
+            <hr className="my-4" />
+            <p className="text-sm text-gray-600 mb-2">扶養控除などの計算に利用します。</p>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">今年の初期収入額 (円, 任意)</label>
+              <input type="number" name="initial_income" value={formState.initial_income} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="前職やアプリ導入前の収入"/>
+            </div>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">初期収入額の対象年</label>
+              <input type="number" name="initial_income_year" value={formState.initial_income_year} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             
             <div className="flex gap-2 mt-4">
