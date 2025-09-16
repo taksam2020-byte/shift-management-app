@@ -357,6 +357,24 @@ export default function SchedulePage() {
                 ))}
                 <td className="border border-gray-300 p-2"></td>
             </tr>
+            <tr>
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3}>残勤務日数(目安)</td>
+                {employees.map(emp => {
+                    const remainingDays = annualIncomes[emp.id]?.remainingDays;
+                    const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
+                    let textColor = 'text-gray-500';
+                    if (remainingDays !== null) {
+                        if (remainingDays < 0) textColor = 'text-red-500 font-bold';
+                        else if (remainingDays < 5) textColor = 'text-yellow-500';
+                    }
+                    return (
+                        <td key={emp.id} className={`border border-gray-300 p-2 text-center font-semibold ${textColor}`}>
+                            {hasLimit ? (remainingDays !== null ? remainingDays.toFixed(1) : '-') : '-'}
+                        </td>
+                    );
+                })}
+                <td className="border border-gray-300 p-2"></td>
+            </tr>
           </tfoot>
         </table>
       </div>

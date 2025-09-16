@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 export async function GET() {
   try {
     // PostgreSQLでは `SELECT *` は安全ですが、返却するカラムを明示的に指定します。
-    const { rows: employees } = await query('SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at FROM employees ORDER BY id');
+    const { rows: employees } = await query('SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year FROM employees ORDER BY id');
     return NextResponse.json(employees);
   } catch (error) {
     console.error('Failed to fetch employees:', error);
