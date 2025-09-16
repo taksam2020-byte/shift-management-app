@@ -114,6 +114,33 @@ async function createTables() {
       console.log('INFO: "break_hours" column already exists. No migration needed.');
     }
 
+    // --- Schema Migration: Add initial_income to employees ---
+    const initialIncomeCheck = await client.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'employees' AND column_name = 'initial_income'
+    `);
+    if (initialIncomeCheck.rows.length === 0) {
+      console.log('Migrating schema: Adding "initial_income" columns to "employees" table...');
+      await client.query(`ALTER TABLE employees ADD COLUMN initial_income INTEGER DEFAULT 0`);
+      await client.query(`ALTER TABLE employees ADD COLUMN initial_income_year INTEGER`);
+      console.log('SUCCESS: "initial_income" columns added.');
+    } else {
+      console.log('INFO: "initial_income" columns already exists.');
+    }
+
+    // --- Schema Migration: Add hourly_wage to actual_work_hours ---
+    const hourlyWageCheck = await client.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'actual_work_hours' AND column_name = 'hourly_wage'
+    `);
+    if (hourlyWageCheck.rows.length === 0) {
+      console.log('Migrating schema: Adding "hourly_wage" column to "actual_work_hours" table...');
+      await client.query(`ALTER TABLE actual_work_hours ADD COLUMN hourly_wage INTEGER`);
+      console.log('SUCCESS: "hourly_wage" column added.');
+    } else {
+      console.log('INFO: "hourly_wage" column already exists.');
+    }
+
     // Commit transaction
     await client.query('COMMIT');
     console.log('Successfully created all tables!');

@@ -84,7 +84,7 @@ export default function ManageEmployeesPage() {
     e.preventDefault();
     setError(null);
     
-    const employeeData: Omit<Employee, 'id' | 'hourly_wage'> & { hourly_wage: number; password?: string } = {
+    const employeeData = {
         name: formState.name,
         hourly_wage: Number(formState.hourly_wage),
         max_weekly_hours: formState.max_weekly_hours ? Number(formState.max_weekly_hours) : null,
@@ -92,11 +92,10 @@ export default function ManageEmployeesPage() {
         annual_income_limit: formState.annual_income_limit ? Number(formState.annual_income_limit) : null,
         default_work_hours: formState.default_work_hours || null,
         request_type: formState.request_type,
+        initial_income: formState.initial_income ? Number(formState.initial_income) : null,
+        initial_income_year: formState.initial_income_year ? Number(formState.initial_income_year) : null,
+        password: formState.password || undefined,
     };
-
-    if (formState.password) {
-        employeeData.password = formState.password;
-    }
 
     const url = isEditing ? `/api/employees/${formState.id}` : '/api/employees';
     const method = isEditing ? 'PUT' : 'POST';

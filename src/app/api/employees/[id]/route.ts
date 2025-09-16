@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 // GET handler to fetch a single employee by ID
 export async function GET(request: NextRequest, { params }: any) {
   try {
-    const sql = 'SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at FROM employees WHERE id = $1';
+    const sql = 'SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year FROM employees WHERE id = $1';
     const result = await query(sql, [params.id]);
     const employee = result.rows[0];
 
@@ -87,6 +87,10 @@ export async function DELETE(request: NextRequest, { params }: any) {
     return new NextResponse(null, { status: 204 });
 
   } catch (error) {
+    console.error(`Failed to delete employee ${params.id}:`, error);
+    return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
+  }
+}r) {
     console.error(`Failed to delete employee ${params.id}:`, error);
     return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
   }

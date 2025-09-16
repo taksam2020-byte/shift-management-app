@@ -127,6 +127,24 @@ export default function SchedulePage() {
         setRequests(requestsData);
         setHolidays(allHolidays);
 
+        // --- Fetch and calculate annual income data ---
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        const incomePromises = employeesData.map(emp => 
+            fetch(`/api/reports/annual-summary?employeeId=${emp.id}&year=${year}&untilMonth=${month}`)
+                .then(res => res.json())
+                .then(data => ({ ...data, employeeId: emp.id }))
+        );
+        const incomeResults = await Promise.all(incomePromises);
+        const newAnnualIncomes: AnnualIncomeState = {};
+        incomeResults.forEach(result => {
+            if (result.employeeId) {
+                newAnnualIncomes[result.employeeId] = { totalIncome: result.totalIncome, remainingDays: null };
+            }
+        });
+        setAnnualIncomes(newAnnualIncomes);
+        // --- End of annual income fetching ---
+
         const initialSchedule: ScheduleState = {};
         requestsData.forEach(req => {
             if (req.request_type === 'work') {
@@ -215,6 +233,48 @@ export default function SchedulePage() {
     });
     return totals;
   }, [schedule, employees, days]);
+
+  // --- Calculate and update remaining days ---
+  useEffect(() => {
+    if (!employees.length || !Object.keys(annualIncomes).length) return;
+
+    const newAnnualIncomes: AnnualIncomeState = { ...annualIncomes };
+
+    employees.forEach(emp => {
+        const annualIncomeLimit = emp.annual_income_limit;
+        if (!annualIncomeLimit) return; // Skip if no limit is set
+
+        const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
+        
+        // Calculate this month's projected income from the schedule state
+        let thisMonthProjectedIncome = 0;
+        days.forEach(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const shiftTime = schedule[dateStr]?.[emp.id];
+            if (shiftTime) {
+                const hours = parseShiftTime(shiftTime, true);
+                thisMonthProjectedIncome += hours * emp.hourly_wage;
+            }
+        });
+
+        const remainingMonths = 12 - (currentDate.getMonth()); // Including current month
+        const remainingAnnualBudget = annualIncomeLimit - pastIncome;
+        const averageMonthlyBudget = remainingAnnualBudget / remainingMonths;
+        const remainingThisMonthBudget = averageMonthlyBudget - thisMonthProjectedIncome;
+
+        let remainingDays = null;
+        const dailyWage = (emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8) * emp.hourly_wage;
+        if (dailyWage > 0) {
+            remainingDays = remainingThisMonthBudget / dailyWage;
+        }
+        
+        newAnnualIncomes[emp.id] = { ...newAnnualIncomes[emp.id], remainingDays };
+    });
+
+    setAnnualIncomes(newAnnualIncomes);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule, employees, days, currentDate]); // Recalculate when schedule changes
 
   if (isLoading) return <p className="p-4 text-center">スケジュールを読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
