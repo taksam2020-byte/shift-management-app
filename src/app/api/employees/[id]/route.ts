@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: any) {
 export async function PUT(request: NextRequest, { params }: any) {
   try {
     const employeeData = await request.json();
-    const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
+    const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year } = employeeData;
 
     if (!name || !hourly_wage) {
       return NextResponse.json({ error: '名前と時給は必須です。' }, { status: 400 });
@@ -49,6 +49,10 @@ export async function PUT(request: NextRequest, { params }: any) {
     queryParams.push(default_work_hours);
     updateFields.push(`request_type = $${paramIndex++}`);
     queryParams.push(request_type);
+    updateFields.push(`initial_income = $${paramIndex++}`);
+    queryParams.push(initial_income);
+    updateFields.push(`initial_income_year = $${paramIndex++}`);
+    queryParams.push(initial_income_year);
 
     if (password) {
       const saltRounds = 10;
@@ -87,10 +91,6 @@ export async function DELETE(request: NextRequest, { params }: any) {
     return new NextResponse(null, { status: 204 });
 
   } catch (error) {
-    console.error(`Failed to delete employee ${params.id}:`, error);
-    return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
-  }
-}r) {
     console.error(`Failed to delete employee ${params.id}:`, error);
     return NextResponse.json({ error: 'Failed to delete employee' }, { status: 500 });
   }
