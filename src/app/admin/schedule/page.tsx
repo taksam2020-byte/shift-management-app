@@ -5,7 +5,15 @@ import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, p
 import ShiftInput from '@/components/ShiftInput';
 
 // --- Type Definitions ---
-interface Employee { id: number; name: string; default_work_hours?: string | null; max_weekly_hours?: number | null; max_weekly_days?: number | null; }
+interface Employee { 
+  id: number; 
+  name: string; 
+  hourly_wage: number;
+  default_work_hours?: string | null; 
+  max_weekly_hours?: number | null; 
+  max_weekly_days?: number | null; 
+  annual_income_limit?: number | null;
+}
 interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
 interface Shift { employee_id: number; date: string; start_time: string; end_time: string; }
 interface DailyNote { date: string; note: string; }
