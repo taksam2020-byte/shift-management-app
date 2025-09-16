@@ -16,26 +16,52 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
+  const useSchedule = searchParams.get('useSchedule') === 'true';
 
   if (!startDate || !endDate) {
     return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
   }
 
   try {
-    const sql = `
-      SELECT
-        e.id as employee_id,
-        e.name as employee_name,
-        e.hourly_wage,
-        a.actual_start_time,
-        a.actual_end_time,
-        a.break_hours
-      FROM employees e
-      JOIN shifts s ON e.id = s.employee_id
-      INNER JOIN actual_work_hours a ON s.id = a.shift_id
-      WHERE s.date BETWEEN $1 AND $2
-      ORDER BY e.id, s.date
-    `;
+    let sql;
+    if (useSchedule) {
+      // 実績＋予定で計算
+      sql = `
+        SELECT
+          e.id as employee_id,
+          e.name as employee_name,
+          e.hourly_wage,
+          s.start_time as schedule_start_time,
+          s.end_time as schedule_end_time,
+          a.actual_start_time,
+          a.actual_end_time,
+          a.break_hours
+        FROM employees e
+        JOIN shifts s ON e.id = s.employee_id
+        LEFT JOIN actual_work_hours a ON s.id = a.shift_id
+        WHERE s.date BETWEEN $1 AND $2
+        ORDER BY e.id, s.date
+      `;
+    } else {
+      // 実績のみで計算
+      sql = `
+        SELECT
+          e.id as employee_id,
+          e.name as employee_name,
+          e.hourly_wage,
+          s.start_time as schedule_start_time, -- Not used but kept for consistency
+          s.end_time as schedule_end_time,   -- Not used but kept for consistency
+          a.actual_start_time,
+          a.actual_end_time,
+          a.break_hours
+        FROM employees e
+        JOIN shifts s ON e.id = s.employee_id
+        INNER JOIN actual_work_hours a ON s.id = a.shift_id
+        WHERE s.date BETWEEN $1 AND $2
+        ORDER BY e.id, s.date
+      `;
+    }
+
     const { rows: shifts } = await query(sql, [startDate, endDate]);
 
     const report: Record<number, {
@@ -56,10 +82,18 @@ export async function GET(request: Request) {
             };
         }
 
-        const duration = calculateDuration(shift.actual_start_time, shift.actual_end_time);
-        const breakHours = shift.break_hours ?? 1;
+        // Use actual times if available, otherwise fall back to scheduled times
+        const startTime = shift.actual_start_time || shift.schedule_start_time;
+        const endTime = shift.actual_end_time || shift.schedule_end_time;
+
+        if (!startTime || !endTime) continue; // Skip if no time data is available at all
+
+        const duration = calculateDuration(startTime, endTime);
         
-        const netHours = duration >= 6 ? duration - breakHours : duration;
+        // Use recorded break_hours for actuals, default to 1 hour for schedule
+        const breakHours = shift.break_hours ?? (duration >= 6 ? 1 : 0);
+        
+        const netHours = duration - breakHours;
 
         if (netHours > 0) {
             report[employeeId].total_hours += netHours;

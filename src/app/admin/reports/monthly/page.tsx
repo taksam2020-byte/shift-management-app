@@ -34,6 +34,7 @@ const getDefaultDateRange = () => {
 export default function MonthlyReportPage() {
   const [reportData, setReportData] = useState<ReportRow[]>([]);
   const [dateRange, setDateRange] = useState(getDefaultDateRange);
+  const [useSchedule, setUseSchedule] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +51,7 @@ export default function MonthlyReportPage() {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
+        useSchedule: String(useSchedule),
       });
       const response = await fetch(`/api/reports/monthly?${params.toString()}`);
       if (!response.ok) {
@@ -92,6 +94,18 @@ export default function MonthlyReportPage() {
             onChange={handleDateChange}
             className="mt-1 block w-full form-input"
           />
+        </div>
+        <div className="flex items-center pt-4 sm:pt-0">
+          <input
+            type="checkbox"
+            id="useSchedule"
+            checked={useSchedule}
+            onChange={(e) => setUseSchedule(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">
+            未入力の実績をシフト予定で補完する
+          </label>
         </div>
         <button
           onClick={generateReport}
