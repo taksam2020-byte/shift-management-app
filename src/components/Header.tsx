@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { useAuth } from '@/components/AuthProvider';
+
 interface User {
   id: number;
   name: string;
@@ -13,29 +15,30 @@ interface User {
 }
 
 export default function Header() {
+  const { isAuthenticated } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // FIX: Ensure localStorage is only accessed on the client side
-    if (typeof window !== 'undefined') {
+    if (isAuthenticated) {
       const storedUser = localStorage.getItem('loggedInUser');
       if (storedUser) {
         setUser(JSON.parse(storedUser));
-      } else {
-        setUser(null);
       }
+    } else {
+      setUser(null);
     }
     setIsMenuOpen(false);
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
-    localStorage.removeItem('authToken'); // Remove the auth token
+    localStorage.removeItem('authToken');
     setUser(null);
-    router.push('/');
+    // Reload the page to re-trigger the auth flow
+    window.location.href = '/';
   };
 
   const activeClass = "text-white font-bold";

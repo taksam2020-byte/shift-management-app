@@ -1,22 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-// Publicly accessible routes
+interface AuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const publicRoutes = ['/', '/admin/login', '/employee/login'];
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
+      setIsLoading(true);
       try {
         let user = localStorage.getItem('loggedInUser');
         
-        if (!user) {
+        if (user) {
+          setIsAuthenticated(true);
+        } else {
           const token = localStorage.getItem('authToken');
           if (token) {
             const response = await fetch('/api/auth/verify-token', {
@@ -27,14 +37,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             if (response.ok) {
               const { user: userData } = await response.json();
               localStorage.setItem('loggedInUser', JSON.stringify(userData));
-              user = 'true'; // Set user to a truthy value for the next check
+              setIsAuthenticated(true);
+              user = 'true';
             } else {
               localStorage.removeItem('authToken');
+              setIsAuthenticated(false);
             }
+          } else {
+            setIsAuthenticated(false);
           }
         }
 
-        // --- Redirection Logic ---
         const isPublicPage = publicRoutes.includes(pathname);
 
         if (user && isPublicPage) {
@@ -44,24 +57,31 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        // In case of error, clear auth data and redirect to home
         localStorage.removeItem('loggedInUser');
         localStorage.removeItem('authToken');
+        setIsAuthenticated(false);
         if (!publicRoutes.includes(pathname)) {
             router.push('/');
         }
       } finally {
-        // Always finish loading
         setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, [pathname]);
+  }, [pathname, router]);
 
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">読み込み中...</div>;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
+      {isLoading ? <div className="flex h-screen items-center justify-center">読み込み中...</div> : children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-
-  return <>{children}</>;
+  return context;
 }

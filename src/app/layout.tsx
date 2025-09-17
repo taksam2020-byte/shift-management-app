@@ -19,10 +19,12 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full bg-gray-50">
       <body className={`${inter.className} h-full flex flex-col`}>
-        <Header />
-        <main className="flex-grow overflow-y-auto">
-          <AuthProvider>{children}</AuthProvider>
-        </main>
+        <AuthProvider>
+          <Header />
+          <main className="flex-grow overflow-y-auto">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

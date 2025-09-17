@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider'; // Import useAuth
 
 interface Employee {
   id: number;
@@ -10,33 +11,34 @@ interface Employee {
 }
 
 export default function EmployeeLoginPage() {
+  const { isLoading: isAuthLoading } = useAuth(); // Get auth loading state
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Use different loading state for form submission
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await fetch('/api/employees');
-        if (!response.ok) throw new Error('従業員リストの取得に失敗しました。');
-        const data = await response.json();
-        setEmployees(data);
-
-        if (data.length > 0) {
-          setSelectedEmployeeId(String(data[0].id));
+    // Only fetch employees if auth is not loading and user is not authenticated
+    if (!isAuthLoading) {
+      const fetchEmployees = async () => {
+        try {
+          const response = await fetch('/api/employees');
+          if (!response.ok) throw new Error('従業員リストの取得に失敗しました。');
+          const data = await response.json();
+          setEmployees(data);
+          if (data.length > 0) {
+            setSelectedEmployeeId(String(data[0].id));
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : '不明なエラー');
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '不明なエラー');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
+      };
+      fetchEmployees();
+    }
+  }, [isAuthLoading]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -44,14 +46,14 @@ export default function EmployeeLoginPage() {
         setError('名前とパスワードの両方を入力してください。');
         return;
     }
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
 
     try {
         const response = await fetch('/api/employee/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
+            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
         });
 
         const data = await response.json();
@@ -62,33 +64,31 @@ export default function EmployeeLoginPage() {
         if (data.token) {
             localStorage.setItem('authToken', data.token);
         }
-
-        const fullEmployeeData = employees.find(emp => emp.id === parseInt(selectedEmployeeId, 10));
-
-        const userData = {
-          id: data.user.id,
-          name: data.user.name,
-          isAdmin: false,
-          request_type: fullEmployeeData?.request_type || 'holiday',
-        };
-
-        localStorage.setItem('loggedInUser', JSON.stringify(userData));
-        router.push('/dashboard');
+        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+        // Instead of pushing, we reload the page. AuthProvider will handle the redirect.
+        window.location.href = '/dashboard';
 
     } catch (err) {
         setError(err instanceof Error ? err.message : 'ログインエラー');
     } finally {
-        setIsLoading(false);
+        setIsSubmitting(false);
     }
   };
+
+  // Render nothing or a minimal loader while AuthProvider is checking
+  if (isAuthLoading) {
+    return null;
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-50">
       <div className="w-full max-w-md p-6 sm:p-8 space-y-6 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center text-gray-800">従業員ログイン</h1>
         
-        {isLoading && <p>読み込み中...</p>}
-        {!isLoading && employees.length > 0 && (
+        {employees.length === 0 && !error && <p>従業員リストを読み込み中...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+
+        {employees.length > 0 && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label htmlFor="employee-select" className="block text-sm font-medium text-gray-700">
@@ -134,15 +134,12 @@ export default function EmployeeLoginPage() {
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400"
             >
-              {isLoading ? 'ログイン中...' : 'ログイン'}
+              {isSubmitting ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
-        )}
-        {!isLoading && employees.length === 0 && (
-            <p className="text-center text-gray-500">登録されている従業員がいません。管理者に連絡してください。</p>
         )}
       </div>
     </main>
