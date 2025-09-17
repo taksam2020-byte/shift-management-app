@@ -42,6 +42,10 @@ export default function EmployeeLoginPage() {
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
+
+    // Always clear old token on new login attempt
+    localStorage.removeItem('authToken');
+
     if (!selectedEmployeeId || !password) {
         setError('名前とパスワードの両方を入力してください。');
         return;
