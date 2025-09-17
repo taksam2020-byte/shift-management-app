@@ -67,6 +67,12 @@ export default function MonthlyReportPage() {
     }
   };
 
+  const totals = reportData.reduce((acc, row) => ({
+    total_days: acc.total_days + row.total_days,
+    total_hours: acc.total_hours + row.total_hours,
+    total_pay: acc.total_pay + row.total_pay,
+  }), { total_days: 0, total_hours: 0, total_pay: 0 });
+
   return (
     <div className="container mx-auto p-4">
       
