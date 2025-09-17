@@ -19,8 +19,6 @@ export default function EmployeeLoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    localStorage.removeItem('loggedInUser');
-    
     const fetchEmployees = async () => {
       try {
         const response = await fetch('/api/employees');
