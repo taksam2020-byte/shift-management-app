@@ -18,26 +18,6 @@ export default function EmployeeLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await fetch('/api/employees');
-        if (!response.ok) throw new Error('従業員リストの取得に失敗しました。');
-        const data = await response.json();
-        setEmployees(data);
-
-        if (data.length > 0) {
-          setSelectedEmployeeId(String(data[0].id));
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '不明なエラー');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
-
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedEmployeeId || !password) {
