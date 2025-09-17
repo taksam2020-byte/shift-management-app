@@ -23,6 +23,7 @@ export default function CrossPeriodReportPage() {
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
   const [months, setMonths] = useState(getInitialMonths);
   const [closingDay, setClosingDay] = useState('10');
+  const [useSchedule, setUseSchedule] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,7 @@ export default function CrossPeriodReportPage() {
         startMonth: months.start,
         endMonth: months.end,
         closingDay,
+        useSchedule: String(useSchedule),
       });
       const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
       if (!response.ok) {
@@ -49,6 +51,12 @@ export default function CrossPeriodReportPage() {
       setIsLoading(false);
     }
   };
+
+  const columnTotals = reportData ? reportData.months.map(month => 
+    reportData.employees.reduce((acc, emp) => acc + (reportData.results[emp.id]?.[month] || 0), 0)
+  ) : [];
+
+  const grandTotal = columnTotals.reduce((acc, total) => acc + total, 0);
 
   return (
     <div className="container mx-auto p-4">
@@ -85,6 +93,18 @@ export default function CrossPeriodReportPage() {
             <option value="20">20日締め</option>
           </select>
         </div>
+        <div className="flex items-center pt-4 sm:pt-0">
+          <input
+            type="checkbox"
+            id="useSchedule"
+            checked={useSchedule}
+            onChange={(e) => setUseSchedule(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">
+            未入力の実績をシフト予定で補完する
+          </label>
+        </div>
         <button
           onClick={handleGenerateReport}
           disabled={isLoading}
@@ -101,9 +121,13 @@ export default function CrossPeriodReportPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">従業員</th>
-                {reportData.months.map(month => (
-                  <th key={month} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{month.replace('-', '年')}月度</th>
-                ))}
+                {reportData.months.map(month => {
+                  const [year, monthNum] = month.split('-');
+                  return (
+                    <th key={month} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-pre-line">{`${year}年
+${monthNum}月度`}</th>
+                  )
+                })}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
               </tr>
             </thead>
@@ -121,6 +145,15 @@ export default function CrossPeriodReportPage() {
                 );
               })}
             </tbody>
+            <tfoot className="bg-gray-100 font-bold">
+                <tr>
+                    <td className="px-6 py-3 text-left sticky left-0 bg-gray-100">合計</td>
+                    {columnTotals.map((total, index) => (
+                        <td key={index} className="px-6 py-3 text-right">{total.toFixed(2)}</td>
+                    ))}
+                    <td className="px-6 py-3 text-right">{grandTotal.toFixed(2)}</td>
+                </tr>
+            </tfoot>
           </table>
         </div>
       )}

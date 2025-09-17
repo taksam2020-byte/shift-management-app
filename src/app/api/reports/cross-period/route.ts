@@ -49,11 +49,13 @@ export async function GET(request: Request) {
         const sql = `
             SELECT
                 s.employee_id,
+                s.start_time as schedule_start_time,
+                s.end_time as schedule_end_time,
                 a.actual_start_time,
                 a.actual_end_time,
                 a.break_hours
             FROM shifts s
-            INNER JOIN actual_work_hours a ON s.id = a.shift_id
+            ${useSchedule ? 'LEFT' : 'INNER'} JOIN actual_work_hours a ON s.id = a.shift_id
             WHERE s.date BETWEEN $1 AND $2
         `;
         const { rows: shifts } = await query(sql, [startDate, endDate]);
