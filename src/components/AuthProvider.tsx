@@ -57,7 +57,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     };
 
     checkAuth();
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">読み込み中...</div>;
