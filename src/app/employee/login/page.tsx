@@ -51,7 +51,7 @@ export default function EmployeeLoginPage() {
         const response = await fetch('/api/employee/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
+                        body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
         });
 
         const data = await response.json();
