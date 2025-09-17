@@ -157,6 +157,10 @@ export default function ManageEmployeesPage() {
           <h2 className="text-xl font-semibold mb-2">{isEditing ? '従業員を編集' : '従業員を追加'}</h2>
           <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow-md">
             <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">従業員ID</label>
+              <input type="number" name="id" value={formState.id} onChange={handleInputChange} className="mt-1 w-full form-input disabled:bg-gray-200" required disabled={isEditing} />
+            </div>
+            <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">氏名</label>
               <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" required />
             </div>

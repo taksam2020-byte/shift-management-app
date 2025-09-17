@@ -14,11 +14,9 @@ interface ReportRow {
 // --- Helper ---
 const getDefaultDateRange = () => {
     const today = new Date();
-    // Default to the current pay period (e.g., if today is Aug 26, period is Aug 11 to Sep 10)
     const year = today.getFullYear();
     const month = today.getMonth();
     const start = new Date(year, month, 11);
-    // If today is before the 11th, the period started last month
     if (today.getDate() < 11) {
         start.setMonth(start.getMonth() - 1);
     }
@@ -29,7 +27,6 @@ const getDefaultDateRange = () => {
         endDate: format(end, 'yyyy-MM-dd'),
     };
 };
-
 
 export default function MonthlyReportPage() {
   const [reportData, setReportData] = useState<ReportRow[]>([]);
@@ -75,8 +72,6 @@ export default function MonthlyReportPage() {
 
   return (
     <div className="container mx-auto p-4">
-      
-
       {/* Controls */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-end gap-4 justify-between">
         <div className="w-full sm:w-auto">
@@ -152,6 +147,16 @@ export default function MonthlyReportPage() {
               </tr>
             )}
           </tbody>
+          {reportData.length > 0 && (
+            <tfoot className="bg-gray-100 font-bold">
+              <tr>
+                <td className="px-6 py-3 text-left">合計</td>
+                <td className="px-6 py-3 text-right">{totals.total_days} 日</td>
+                <td className="px-6 py-3 text-right">{totals.total_hours.toFixed(2)} 時間</td>
+                <td className="px-6 py-3 text-right">¥{Math.round(totals.total_pay).toLocaleString()}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
