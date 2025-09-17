@@ -91,6 +91,7 @@ export default function ManageEmployeesPage() {
     setError(null);
     
     const employeeData: Partial<Employee> & { password?: string } = {
+        id: Number(formState.id),
         name: formState.name,
         hourly_wage: Number(formState.hourly_wage),
         max_weekly_hours: formState.max_weekly_hours ? Number(formState.max_weekly_hours) : null,

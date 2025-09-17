@@ -153,6 +153,28 @@ async function createTables() {
     `);
     console.log('Table "auth_tokens" created or already exists.');
 
+    // --- Schema Migration: Change employees.id from SERIAL to INTEGER ---
+    const idSerialCheck = await client.query(`
+      SELECT column_default 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+        AND table_name = 'employees' 
+        AND column_name = 'id' 
+        AND column_default LIKE 'nextval%';
+    `);
+
+    if (idSerialCheck.rows.length > 0) {
+      console.log('Migrating schema: Changing employees.id from SERIAL to INTEGER...');
+      // The column type is already integer, we just need to drop the default sequence.
+      await client.query(`ALTER TABLE employees ALTER COLUMN id DROP DEFAULT;`);
+      // It's good practice to also drop the sequence itself if it's no longer needed,
+      // but that requires knowing the sequence name (e.g., employees_id_seq). 
+      // For simplicity and safety, we'll just drop the default value linkage.
+      console.log('SUCCESS: employees.id is now manually assigned.');
+    } else {
+      console.log('INFO: employees.id is already manually assigned.');
+    }
+
     // Commit transaction
     await client.query('COMMIT');
     console.log('Successfully created all tables!');

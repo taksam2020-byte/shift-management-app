@@ -19,29 +19,33 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const employeeData = await request.json();
-    const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
+    const { id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type } = employeeData;
 
-    // 新規作成時はパスワードを必須とします。
-    if (!name || !hourly_wage || !password) {
-      return NextResponse.json({ error: '名前、時給、パスワードは必須です。' }, { status: 400 });
+    // ID, 新規作成時はパスワードを必須とします。
+    if (!id || !name || !hourly_wage || !password) {
+      return NextResponse.json({ error: '従業員ID、氏名、時給、パスワードは必須です。' }, { status: 400 });
+    }
+
+    // Check for duplicate ID
+    const existingEmployee = await query('SELECT id FROM employees WHERE id = $1', [id]);
+    if (existingEmployee.rows.length > 0) {
+      return NextResponse.json({ error: 'この従業員IDは既に使用されています。' }, { status: 409 });
     }
 
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    // PostgreSQL形式のプレースホルダー($1, $2)とRETURNING idを使用します。
     const sql = `
-      INSERT INTO employees (name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO employees (id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id
     `;
-    const params = [name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type || 'holiday'];
+    const params = [id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password_hash, default_work_hours, request_type || 'holiday'];
     
     const result = await query(sql, params);
     const newId = result.rows[0]?.id;
 
     if (newId) {
-        // パスワード情報は返却しません。
         const { password, ...returnData } = employeeData;
         return NextResponse.json({ id: newId, ...returnData }, { status: 201 });
     } else {
