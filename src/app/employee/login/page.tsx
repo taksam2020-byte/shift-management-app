@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider'; // Import useAuth
 
 interface Employee {
@@ -15,10 +14,8 @@ export default function EmployeeLoginPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false); // Use different loading state for form submission
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     // Only fetch employees if auth is not loading and user is not authenticated
@@ -57,7 +54,7 @@ export default function EmployeeLoginPage() {
         const response = await fetch('/api/employee/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe }),
+            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe: true }), // Always remember
         });
 
         const data = await response.json();
@@ -122,20 +119,7 @@ export default function EmployeeLoginPage() {
                     required
                 />
             </div>
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                ログイン状態を維持する
-              </label>
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
             <button
               type="submit"
               disabled={isSubmitting}
