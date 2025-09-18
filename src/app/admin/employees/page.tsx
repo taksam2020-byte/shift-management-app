@@ -239,6 +239,7 @@ export default function ManageEmployeesPage() {
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.request_type === 'work' ? '希望出勤' : '希望休'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_days || '-'}</td>
+                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.default_work_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.annual_income_limit ? `¥${emp.annual_income_limit.toLocaleString()}` : '-'}</td>
                       <td className="px-2 py-2 text-center">
                         <button onClick={() => handleDelete(emp.id)} className="text-red-600 hover:text-red-800 text-xs">削除</button>
@@ -249,11 +250,6 @@ export default function ManageEmployeesPage() {
               </table>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}</div>
         </div>
       </div>
     </div>

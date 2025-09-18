@@ -46,8 +46,8 @@ const calculateDuration = (start: string, end: string): number => {
 
 // --- Sub-component for a single shift row ---
 function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, start: string, end: string, breakHours: number) => Promise<void> }) {
-    const [actualStart, setActualStart] = useState(shift.actual_start_time || shift.start_time);
-    const [actualEnd, setActualEnd] = useState(shift.actual_end_time || shift.end_time);
+    const [actualStart, setActualStart] = useState(shift.actual_start_time ? shift.actual_start_time.substring(0, 5) : shift.start_time.substring(0, 5));
+    const [actualEnd, setActualEnd] = useState(shift.actual_end_time ? shift.actual_end_time.substring(0, 5) : shift.end_time.substring(0, 5));
     const [breakHours, setBreakHours] = useState(shift.break_hours ?? 1);
     
     const canEdit = isPast(parseISO(shift.date));
@@ -204,11 +204,6 @@ export default function MySchedulePage() {
             shifts.map(shift => <ShiftRow key={shift.id} shift={shift} onSave={handleSaveActuals} />)
         ) : (
             <p className="text-center bg-white p-6 rounded-lg shadow-md">この期間のシフトはありません。</p>
-        )}
-      </ul>
-    </div>
-  );
-}��のシフトはありません。</p>
         )}
       </ul>
     </div>
