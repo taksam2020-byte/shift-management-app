@@ -160,8 +160,9 @@ export default function SchedulePage() {
             if (req.request_type === 'work') {
                 const employee = employeesData.find(e => e.id === req.employee_id);
                 if (employee) {
-                    if (!initialSchedule[req.date]) initialSchedule[req.date] = {};
-                    initialSchedule[req.date][req.employee_id] = employee.default_work_hours || '09:00-17:00';
+                    const dateStr = req.date.substring(0, 10); // Normalize to YYYY-MM-DD
+                    if (!initialSchedule[dateStr]) initialSchedule[dateStr] = {};
+                    initialSchedule[dateStr][req.employee_id] = employee.default_work_hours || '09:00-17:00';
                 }
             }
         });
