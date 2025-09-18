@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         const monthlyTotals: Record<number, { hours: number; days: number; pay: number; }> = {};
 
         for (const shift of shifts) {
-            const employee = employees.find(e => e.id === shift.employee_id);
+            const employee = employees.find((e: Employee) => e.id === shift.employee_id);
             if (!employee) continue;
 
             if (!monthlyTotals[shift.employee_id]) {
