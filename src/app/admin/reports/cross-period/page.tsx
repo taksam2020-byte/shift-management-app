@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 
 // --- Type Definitions ---
+type DisplayMode = 'hours' | 'days' | 'pay';
+
 interface CrossPeriodReport {
   employees: { id: number; name: string; }[];
   months: string[]; // e.g., "2024-08"
-  results: Record<number, Record<string, number>>; // { employeeId: { "2024-08": totalHours, ... } }
+  results: Record<DisplayMode, Record<number, Record<string, number>>>;
 }
 
 const getInitialMonths = (closingDay: string) => {
@@ -16,11 +18,9 @@ const getInitialMonths = (closingDay: string) => {
     let start, end;
 
     if (closingDay === '10') {
-        // 当年1月度 (前年12/11) から 当年12月度 (当年12/10)
         start = `${currentYear}-01`;
         end = `${currentYear}-12`;
     } else { // 20日締め
-        // 当年2月度 (当年1/21) から 次年1月度 (次年1/20)
         start = `${currentYear}-02`;
         end = `${currentYear + 1}-01`;
     }
@@ -43,6 +43,7 @@ export default function CrossPeriodReportPage() {
   const [months, setMonths] = useState(() => getInitialMonths(closingDay));
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
   const [useSchedule, setUseSchedule] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('hours');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,8 +79,17 @@ export default function CrossPeriodReportPage() {
   const { start: startDate, end: _ } = getPeriodDates(months.start, closingDay);
   const { start: __, end: finalEndDate } = getPeriodDates(months.end, closingDay);
 
+  const formatCell = (value: number) => {
+    switch (displayMode) {
+        case 'pay': return `¥${Math.round(value).toLocaleString()}`;
+        case 'hours': return value.toFixed(2);
+        case 'days': return value;
+        default: return value;
+    }
+  };
+
   const columnTotals = reportData ? reportData.months.map(month => 
-    reportData.employees.reduce((acc, emp) => acc + (reportData.results[emp.id]?.[month] || 0), 0)
+    reportData.employees.reduce((acc, emp) => acc + (reportData.results[displayMode][emp.id]?.[month] || 0), 0)
   ) : [];
 
   const grandTotal = columnTotals.reduce((acc, total) => acc + total, 0);
@@ -87,58 +97,38 @@ export default function CrossPeriodReportPage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">年間集計</h1>
-      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-end gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
+        {/* ... control inputs ... */}
         <div className="w-full sm:w-auto">
           <label htmlFor="startMonth" className="block text-sm font-medium text-gray-700">開始月</label>
-          <input
-            type="month"
-            id="startMonth"
-            value={months.start}
-            onChange={(e) => setMonths(prev => ({ ...prev, start: e.target.value }))}
-            className="mt-1 block w-full form-input"
-          />
+          <input type="month" id="startMonth" value={months.start} onChange={(e) => setMonths(prev => ({ ...prev, start: e.target.value }))} className="mt-1 block w-full form-input" />
           <p className="text-xs text-gray-500 mt-1">{startDate} ~</p>
         </div>
         <div className="w-full sm:w-auto">
           <label htmlFor="endMonth" className="block text-sm font-medium text-gray-700">終了月</label>
-          <input
-            type="month"
-            id="endMonth"
-            value={months.end}
-            onChange={(e) => setMonths(prev => ({ ...prev, end: e.target.value }))}
-            className="mt-1 block w-full form-input"
-          />
+          <input type="month" id="endMonth" value={months.end} onChange={(e) => setMonths(prev => ({ ...prev, end: e.target.value }))} className="mt-1 block w-full form-input" />
           <p className="text-xs text-gray-500 mt-1">~ {finalEndDate}</p>
         </div>
         <div className="w-full sm:w-auto">
           <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
-          <select
-            id="closingDay"
-            value={closingDay}
-            onChange={(e) => setClosingDay(e.target.value)}
-            className="mt-1 block w-full form-select"
-          >
+          <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
             <option value="10">10日締め</option>
             <option value="20">20日締め</option>
           </select>
         </div>
         <div className="flex items-center pt-4 sm:pt-0">
-          <input
-            type="checkbox"
-            id="useSchedule"
-            checked={useSchedule}
-            onChange={(e) => setUseSchedule(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">
-            未入力の実績をシフト予定で補完する
-          </label>
+          <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完</label>
         </div>
-        <button
-          onClick={handleGenerateReport}
-          disabled={isLoading}
-          className="w-full sm:w-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 disabled:bg-gray-400 self-end"
-        >
+        <div className="w-full sm:w-auto">
+            <label className="block text-sm font-medium text-gray-700">表示項目</label>
+            <select value={displayMode} onChange={(e) => setDisplayMode(e.target.value as DisplayMode)} className="mt-1 block w-full form-select">
+                <option value="hours">勤務時間</option>
+                <option value="days">勤務日数</option>
+                <option value="pay">概算給与</option>
+            </select>
+        </div>
+        <button onClick={handleGenerateReport} disabled={isLoading} className="w-full sm:w-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 disabled:bg-gray-400 self-end">
           {isLoading ? '生成中...' : 'レポート生成'}
         </button>
       </div>
@@ -162,14 +152,14 @@ ${monthNum}月度`}</th>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {reportData.employees.map(employee => {
-                const totalHours = reportData.months.reduce((acc, month) => acc + (reportData.results[employee.id]?.[month] || 0), 0);
+                const totalValue = reportData.months.reduce((acc, month) => acc + (reportData.results[displayMode][employee.id]?.[month] || 0), 0);
                 return (
                   <tr key={employee.id}>
                     <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white">{employee.name}</td>
                     {reportData.months.map(month => (
-                      <td key={month} className="px-6 py-4 text-right">{(reportData.results[employee.id]?.[month] || 0).toFixed(2)}</td>
+                      <td key={month} className="px-6 py-4 text-right">{formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}</td>
                     ))}
-                    <td className="px-6 py-4 text-right font-bold">{totalHours.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right font-bold">{formatCell(totalValue)}</td>
                   </tr>
                 );
               })}
@@ -178,9 +168,9 @@ ${monthNum}月度`}</th>
                 <tr>
                     <td className="px-6 py-3 text-left sticky left-0 bg-gray-100">合計</td>
                     {columnTotals.map((total, index) => (
-                        <td key={index} className="px-6 py-3 text-right">{total.toFixed(2)}</td>
+                        <td key={index} className="px-6 py-3 text-right">{formatCell(total)}</td>
                     ))}
-                    <td className="px-6 py-3 text-right">{grandTotal.toFixed(2)}</td>
+                    <td className="px-6 py-3 text-right">{formatCell(grandTotal)}</td>
                 </tr>
             </tfoot>
           </table>

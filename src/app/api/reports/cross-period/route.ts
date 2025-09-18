@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const employeesResult = await query('SELECT id, name FROM employees ORDER BY id');
+    const employeesResult = await query('SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ORDER BY id');
     const employees = employeesResult.rows;
 
     const monthIntervals = eachMonthOfInterval({
@@ -32,7 +32,11 @@ export async function GET(request: Request) {
         end: new Date(`${endMonthStr}-01`),
     });
 
-    const results: Record<number, Record<string, number>> = {};
+    const results: Record<string, Record<number, Record<string, number>>> = {
+        hours: {},
+        days: {},
+        pay: {},
+    };
     const monthLabels: string[] = [];
 
     for (const monthDate of monthIntervals) {
@@ -62,11 +66,14 @@ export async function GET(request: Request) {
         `;
         const { rows: shifts } = await query(sql, [startDate, endDate]);
 
-        const monthlyTotals: Record<number, number> = {};
+        const monthlyTotals: Record<number, { hours: number; days: number; pay: number; }> = {};
 
         for (const shift of shifts) {
+            const employee = employees.find(e => e.id === shift.employee_id);
+            if (!employee) continue;
+
             if (!monthlyTotals[shift.employee_id]) {
-                monthlyTotals[shift.employee_id] = 0;
+                monthlyTotals[shift.employee_id] = { hours: 0, days: 0, pay: 0 };
             }
             
             const startTime = useSchedule ? shift.actual_start_time || shift.schedule_start_time : shift.actual_start_time;
@@ -79,15 +86,34 @@ export async function GET(request: Request) {
             const netHours = duration - breakHours;
 
             if (netHours > 0) {
-                monthlyTotals[shift.employee_id] += netHours;
+                monthlyTotals[shift.employee_id].hours += netHours;
+                monthlyTotals[shift.employee_id].days += 1;
+                monthlyTotals[shift.employee_id].pay += netHours * employee.hourly_wage;
             }
         }
 
         for (const emp of employees) {
-            if (!results[emp.id]) {
-                results[emp.id] = {};
+            if (!results.hours[emp.id]) {
+                results.hours[emp.id] = {};
+                results.days[emp.id] = {};
+                results.pay[emp.id] = {};
             }
-            results[emp.id][monthLabel] = monthlyTotals[emp.id] || 0;
+            results.hours[emp.id][monthLabel] = monthlyTotals[emp.id]?.hours || 0;
+            results.days[emp.id][monthLabel] = monthlyTotals[emp.id]?.days || 0;
+            results.pay[emp.id][monthLabel] = monthlyTotals[emp.id]?.pay || 0;
+        }
+    }
+    
+    // Add initial_income to the first month's pay for relevant employees
+    const startYear = parseInt(startMonthStr.substring(0, 4), 10);
+    const firstMonthLabel = monthLabels[0];
+    if (firstMonthLabel) {
+        for (const emp of employees) {
+            if (emp.initial_income && emp.initial_income_year === startYear) {
+                if (results.pay[emp.id]) {
+                    results.pay[emp.id][firstMonthLabel] += emp.initial_income;
+                }
+            }
         }
     }
 
