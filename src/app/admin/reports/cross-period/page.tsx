@@ -13,21 +13,18 @@ interface CrossPeriodReport {
 const getInitialMonths = (closingDay: string) => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    let startMonth, endMonth;
+    let start, end;
 
     if (closingDay === '10') {
         // 当年1月度 (前年12/11) から 当年12月度 (当年12/10)
-        startMonth = new Date(currentYear, 0, 1);      // 当年1月
-        endMonth = new Date(currentYear, 11, 1);     // 当年12月
+        start = `${currentYear}-01`;
+        end = `${currentYear}-12`;
     } else { // 20日締め
         // 当年2月度 (当年1/21) から 次年1月度 (次年1/20)
-        startMonth = new Date(currentYear, 1, 1);       // 当年2月
-        endMonth = new Date(currentYear + 1, 0, 1);     // 次年1月
+        start = `${currentYear}-02`;
+        end = `${currentYear + 1}-01`;
     }
-    return {
-        start: startMonth.toISOString().substring(0, 7),
-        end: endMonth.toISOString().substring(0, 7),
-    };
+    return { start, end };
 };
 
 const getPeriodDates = (monthStr: string, closingDay: string) => {
