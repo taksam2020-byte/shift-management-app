@@ -12,6 +12,14 @@ const calculateDuration = (start: string, end: string): number => {
     return duration > 0 ? duration : 0;
 };
 
+interface Employee {
+  id: number;
+  name: string;
+  hourly_wage: number;
+  initial_income: number | null;
+  initial_income_year: number | null;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startMonthStr = searchParams.get('startMonth'); // YYYY-MM
@@ -25,7 +33,7 @@ export async function GET(request: Request) {
 
   try {
     const employeesResult = await query('SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ORDER BY id');
-    const employees = employeesResult.rows;
+    const employees: Employee[] = employeesResult.rows;
 
     const monthIntervals = eachMonthOfInterval({
         start: new Date(`${startMonthStr}-01`),
