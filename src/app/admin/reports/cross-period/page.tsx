@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 
 // --- Type Definitions ---
 interface CrossPeriodReport {
@@ -12,18 +12,17 @@ interface CrossPeriodReport {
 
 const getInitialMonths = (closingDay: string) => {
     const today = new Date();
+    const currentYear = today.getFullYear();
     let startMonth, endMonth;
 
     if (closingDay === '10') {
-        // 前年12月度から当年11月度 (表示は12月まで)
-        const currentYear = today.getFullYear();
+        // 前年12月度 (11/11-12/10) から 当年11月度 (10/11-11/10)
         startMonth = new Date(currentYear - 1, 11, 1); // 前年12月
-        endMonth = new Date(currentYear, 10, 1); // 当年11月
+        endMonth = new Date(currentYear, 10, 1);     // 当年11月
     } else { // 20日締め
-        // 当年2月度から次年1月度
-        const currentYear = today.getFullYear();
-        startMonth = new Date(currentYear, 1, 1); // 当年2月
-        endMonth = new Date(currentYear + 1, 0, 1); // 次年1月
+        // 当年2月度 (1/21-2/20) から 次年1月度 (12/21-1/20)
+        startMonth = new Date(currentYear, 1, 1);       // 当年2月
+        endMonth = new Date(currentYear + 1, 0, 1);     // 次年1月
     }
     return {
         start: startMonth.toISOString().substring(0, 7),
@@ -32,6 +31,7 @@ const getInitialMonths = (closingDay: string) => {
 };
 
 const getPeriodDates = (monthStr: string, closingDay: string) => {
+    if (!monthStr) return { start: '', end: '' };
     const [year, month] = monthStr.split('-').map(Number);
     const d = parseInt(closingDay, 10);
     const periodEnd = new Date(year, month - 1, d);
@@ -45,6 +45,7 @@ export default function CrossPeriodReportPage() {
   const [closingDay, setClosingDay] = useState('10');
   const [months, setMonths] = useState(() => getInitialMonths(closingDay));
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
+  const [useSchedule, setUseSchedule] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +62,7 @@ export default function CrossPeriodReportPage() {
         startMonth: months.start,
         endMonth: months.end,
         closingDay,
-        useSchedule: 'false', // This report is for actuals only for now
+        useSchedule: String(useSchedule),
       });
       const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
       if (!response.ok) {
@@ -77,8 +78,8 @@ export default function CrossPeriodReportPage() {
     }
   };
 
-  const { start: startDate, end: endDate } = getPeriodDates(months.start, closingDay);
-  const { start: finalStartDate, end: finalEndDate } = getPeriodDates(months.end, closingDay);
+  const { start: startDate, end: _ } = getPeriodDates(months.start, closingDay);
+  const { start: __, end: finalEndDate } = getPeriodDates(months.end, closingDay);
 
   const columnTotals = reportData ? reportData.months.map(month => 
     reportData.employees.reduce((acc, emp) => acc + (reportData.results[emp.id]?.[month] || 0), 0)
@@ -123,6 +124,18 @@ export default function CrossPeriodReportPage() {
             <option value="10">10日締め</option>
             <option value="20">20日締め</option>
           </select>
+        </div>
+        <div className="flex items-center pt-4 sm:pt-0">
+          <input
+            type="checkbox"
+            id="useSchedule"
+            checked={useSchedule}
+            onChange={(e) => setUseSchedule(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">
+            未入力の実績をシフト予定で補完する
+          </label>
         </div>
         <button
           onClick={handleGenerateReport}
