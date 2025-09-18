@@ -226,6 +226,7 @@ export default function ManageEmployeesPage() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">提出区分</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週時間</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週日数</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">基本勤務</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">年収上限</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500"></th>
                   </tr>
@@ -248,6 +249,11 @@ export default function ManageEmployeesPage() {
               </table>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}</div>
         </div>
       </div>
     </div>

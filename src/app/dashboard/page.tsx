@@ -55,8 +55,12 @@ export default function DashboardPage() {
               <p>従業員の登録や編集を行います。</p>
             </Link>
             <Link href="/admin/reports/monthly" className="block p-6 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-              <h2 className="text-xl font-bold">月次レポート</h2>
+              <h2 className="text-xl font-bold">月間集計</h2>
               <p>勤務実績の集計レポートを確認します。</p>
+            </Link>
+            <Link href="/admin/reports/cross-period" className="block p-6 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+              <h2 className="text-xl font-bold">年間集計</h2>
+              <p>複数月度の勤務時間を集計・比較します。</p>
             </Link>
             <Link href="/admin/holidays" className="block p-6 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition-colors">
               <h2 className="text-xl font-bold">休業日設定</h2>

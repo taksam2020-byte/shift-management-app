@@ -72,6 +72,7 @@ export default function MonthlyReportPage() {
 
   return (
     <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">月間集計</h1>
       {/* Controls */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-end gap-4 justify-between">
         <div className="w-full sm:w-auto">

@@ -73,7 +73,7 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
         <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
             <div className="flex justify-between items-center w-full mb-3">
                 <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
-                <p className="text-sm text-gray-600">予定: {shift.start_time} - {shift.end_time}</p>
+                <p className="text-sm text-gray-600">予定: {shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)}</p>
             </div>
             <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full">
                 <ActualsInput 
@@ -204,6 +204,11 @@ export default function MySchedulePage() {
             shifts.map(shift => <ShiftRow key={shift.id} shift={shift} onSave={handleSaveActuals} />)
         ) : (
             <p className="text-center bg-white p-6 rounded-lg shadow-md">この期間のシフトはありません。</p>
+        )}
+      </ul>
+    </div>
+  );
+}��のシフトはありません。</p>
         )}
       </ul>
     </div>
