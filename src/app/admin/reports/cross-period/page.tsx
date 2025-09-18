@@ -16,11 +16,11 @@ const getInitialMonths = (closingDay: string) => {
     let startMonth, endMonth;
 
     if (closingDay === '10') {
-        // 前年12月度 (11/11-12/10) から 当年11月度 (10/11-11/10)
-        startMonth = new Date(currentYear - 1, 11, 1); // 前年12月
-        endMonth = new Date(currentYear, 10, 1);     // 当年11月
+        // 当年1月度 (前年12/11) から 当年12月度 (当年12/10)
+        startMonth = new Date(currentYear, 0, 1);      // 当年1月
+        endMonth = new Date(currentYear, 11, 1);     // 当年12月
     } else { // 20日締め
-        // 当年2月度 (1/21-2/20) から 次年1月度 (12/21-1/20)
+        // 当年2月度 (当年1/21) から 次年1月度 (次年1/20)
         startMonth = new Date(currentYear, 1, 1);       // 当年2月
         endMonth = new Date(currentYear + 1, 0, 1);     // 次年1月
     }
