@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import { eachMonthOfInterval, startOfMonth, endOfMonth, format } from 'date-fns';
+import { eachMonthOfInterval, format } from 'date-fns';
 
 // Helper to parse time and calculate duration
 const calculateDuration = (start: string, end: string): number => {
@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const startMonthStr = searchParams.get('startMonth'); // YYYY-MM
   const endMonthStr = searchParams.get('endMonth');   // YYYY-MM
   const closingDay = parseInt(searchParams.get('closingDay') || '10', 10);
+  const useSchedule = searchParams.get('useSchedule') === 'true';
 
   if (!startMonthStr || !endMonthStr) {
     return NextResponse.json({ error: 'Start and end month are required' }, { status: 400 });
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
         const startDate = format(periodStart, 'yyyy-MM-dd');
         const endDate = format(periodEnd, 'yyyy-MM-dd');
 
+        const joinType = useSchedule ? 'LEFT' : 'INNER';
         const sql = `
             SELECT
                 s.employee_id,
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
                 a.actual_end_time,
                 a.break_hours
             FROM shifts s
-            ${useSchedule ? 'LEFT' : 'INNER'} JOIN actual_work_hours a ON s.id = a.shift_id
+            ${joinType} JOIN actual_work_hours a ON s.id = a.shift_id
             WHERE s.date BETWEEN $1 AND $2
         `;
         const { rows: shifts } = await query(sql, [startDate, endDate]);
@@ -66,9 +68,16 @@ export async function GET(request: Request) {
             if (!monthlyTotals[shift.employee_id]) {
                 monthlyTotals[shift.employee_id] = 0;
             }
-            const duration = calculateDuration(shift.actual_start_time, shift.actual_end_time);
+            
+            const startTime = useSchedule ? shift.actual_start_time || shift.schedule_start_time : shift.actual_start_time;
+            const endTime = useSchedule ? shift.actual_end_time || shift.schedule_end_time : shift.actual_end_time;
+
+            if (!startTime || !endTime) continue;
+
+            const duration = calculateDuration(startTime, endTime);
             const breakHours = shift.break_hours ?? (duration >= 6 ? 1 : 0);
             const netHours = duration - breakHours;
+
             if (netHours > 0) {
                 monthlyTotals[shift.employee_id] += netHours;
             }

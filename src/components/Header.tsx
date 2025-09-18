@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-
 import { useAuth } from '@/components/AuthProvider';
 
 interface User {
@@ -18,7 +17,6 @@ export default function Header() {
   const { isAuthenticated } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -37,7 +35,6 @@ export default function Header() {
     localStorage.removeItem('loggedInUser');
     localStorage.removeItem('authToken');
     setUser(null);
-    // Reload the page to re-trigger the auth flow
     window.location.href = '/';
   };
 
@@ -67,7 +64,6 @@ export default function Header() {
   return (
     <header className="bg-gray-800 text-white shadow-md sticky top-0 z-20">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        {/* Left Side */}
         <div className="flex items-center gap-4">
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-3">
             <Image src="/logo.png" alt="Logo" width={52} height={52} className="rounded-md" />
@@ -82,7 +78,6 @@ export default function Header() {
           )}
         </div>
 
-        {/* Right Side */}
         <div className="flex items-center gap-4">
           {user && (
               <div className="hidden md:flex items-center gap-4">
@@ -100,7 +95,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {isMenuOpen && user && (
         <div className="md:hidden bg-gray-700 border-t border-gray-600">
             <nav className="container mx-auto px-4 pb-4 pt-2">
