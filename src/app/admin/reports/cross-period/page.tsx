@@ -51,30 +51,34 @@ export default function CrossPeriodReportPage() {
     setMonths(getInitialMonths(closingDay));
   }, [closingDay]);
 
-  const handleGenerateReport = async () => {
-    setIsLoading(true);
-    setError(null);
-    setReportData(null);
-    try {
-      const params = new URLSearchParams({
-        startMonth: months.start,
-        endMonth: months.end,
-        closingDay,
-        useSchedule: String(useSchedule),
-      });
-      const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'レポートの生成に失敗しました。');
-      }
-      const data: CrossPeriodReport = await response.json();
-      setReportData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    const generateReport = async () => {
+        setIsLoading(true);
+        setError(null);
+        setReportData(null);
+        try {
+        const params = new URLSearchParams({
+            startMonth: months.start,
+            endMonth: months.end,
+            closingDay,
+            useSchedule: String(useSchedule),
+        });
+        const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'レポートの生成に失敗しました。');
+        }
+        const data: CrossPeriodReport = await response.json();
+        setReportData(data);
+        } catch (err) {
+        setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
+        } finally {
+        setIsLoading(false);
+        }
+    };
+
+    generateReport();
+  }, [months, closingDay, useSchedule]);
 
   const { start: startDate, end: _ } = getPeriodDates(months.start, closingDay);
   const { start: __, end: finalEndDate } = getPeriodDates(months.end, closingDay);
@@ -130,13 +134,11 @@ export default function CrossPeriodReportPage() {
                 <option value="pay">概算給与</option>
             </select>
         </div>
-        <button onClick={handleGenerateReport} disabled={isLoading} className="w-full sm:w-auto bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 disabled:bg-gray-400 self-end">
-          {isLoading ? '生成中...' : 'レポート生成'}
-        </button>
       </div>
 
       {error && <p className="text-center text-red-500">{error}</p>}
-      {reportData && (
+      {isLoading && <p className="text-center">読み込み中...</p>}
+      {reportData && !isLoading && (
         <div className="bg-white rounded-lg shadow-md overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -180,8 +182,7 @@ ${monthNum}月度`}</th>
                         const { start, end } = getPeriodDates(month, closingDay);
                         const isCurrentMonth = isWithinInterval(today, { start, end });
                         return (
-                            <td key={index} className={`px-6 py-3 text-right ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{formatCell(total)}
-                            </td>
+                            <td key={index} className={`px-6 py-3 text-right ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{formatCell(total)}</td>
                         )
                     })}
                     <td className="px-6 py-3 text-right">{formatCell(grandTotal)}</td>
