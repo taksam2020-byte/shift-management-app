@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay } from 'date-fns';
 
 // --- Type Definitions ---
 type DisplayMode = 'hours' | 'days' | 'pay';
@@ -28,14 +28,14 @@ const getInitialMonths = (closingDay: string) => {
 };
 
 const getPeriodDates = (monthStr: string, closingDay: string) => {
-    if (!monthStr) return { start: '', end: '' };
+    if (!monthStr) return { start: new Date(), end: new Date() };
     const [year, month] = monthStr.split('-').map(Number);
     const d = parseInt(closingDay, 10);
     const periodEnd = new Date(year, month - 1, d);
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
     periodStart.setDate(periodStart.getDate() + 1);
-    return { start: format(periodStart, 'yyyy/M/d'), end: format(periodEnd, 'yyyy/M/d') };
+    return { start: periodStart, end: periodEnd };
 };
 
 export default function CrossPeriodReportPage() {
@@ -94,6 +94,8 @@ export default function CrossPeriodReportPage() {
 
   const grandTotal = columnTotals.reduce((acc, total) => acc + total, 0);
 
+  const today = startOfDay(new Date());
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">年間集計</h1>
@@ -102,12 +104,12 @@ export default function CrossPeriodReportPage() {
         <div className="w-full sm:w-auto">
           <label htmlFor="startMonth" className="block text-sm font-medium text-gray-700">開始月</label>
           <input type="month" id="startMonth" value={months.start} onChange={(e) => setMonths(prev => ({ ...prev, start: e.target.value }))} className="mt-1 block w-full form-input" />
-          <p className="text-xs text-gray-500 mt-1">{startDate} ~</p>
+          <p className="text-xs text-gray-500 mt-1">{format(startDate, 'yyyy/M/d')} ~</p>
         </div>
         <div className="w-full sm:w-auto">
           <label htmlFor="endMonth" className="block text-sm font-medium text-gray-700">終了月</label>
           <input type="month" id="endMonth" value={months.end} onChange={(e) => setMonths(prev => ({ ...prev, end: e.target.value }))} className="mt-1 block w-full form-input" />
-          <p className="text-xs text-gray-500 mt-1">~ {finalEndDate}</p>
+          <p className="text-xs text-gray-500 mt-1">~ {format(finalEndDate, 'yyyy/M/d')}</p>
         </div>
         <div className="w-full sm:w-auto">
           <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
@@ -142,8 +144,10 @@ export default function CrossPeriodReportPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">従業員</th>
                 {reportData.months.map(month => {
                   const [year, monthNum] = month.split('-');
+                  const { start, end } = getPeriodDates(month, closingDay);
+                  const isCurrentMonth = isWithinInterval(today, { start, end });
                   return (
-                    <th key={month} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-pre-line">{`${year}年
+                    <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-pre-line ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年
 ${monthNum}月度`}</th>
                   )
                 })}
@@ -156,9 +160,13 @@ ${monthNum}月度`}</th>
                 return (
                   <tr key={employee.id}>
                     <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white">{employee.name}</td>
-                    {reportData.months.map(month => (
-                      <td key={month} className="px-6 py-4 text-right">{formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}</td>
-                    ))}
+                    {reportData.months.map(month => {
+                      const { start, end } = getPeriodDates(month, closingDay);
+                      const isCurrentMonth = isWithinInterval(today, { start, end });
+                      return (
+                        <td key={month} className={`px-6 py-4 text-right ${isCurrentMonth ? 'bg-yellow-50' : ''}`}>{formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}</td>
+                      )
+                    })}
                     <td className="px-6 py-4 text-right font-bold">{formatCell(totalValue)}</td>
                   </tr>
                 );
@@ -167,9 +175,15 @@ ${monthNum}月度`}</th>
             <tfoot className="bg-gray-100 font-bold">
                 <tr>
                     <td className="px-6 py-3 text-left sticky left-0 bg-gray-100">合計</td>
-                    {columnTotals.map((total, index) => (
-                        <td key={index} className="px-6 py-3 text-right">{formatCell(total)}</td>
-                    ))}
+                    {columnTotals.map((total, index) => {
+                        const month = reportData.months[index];
+                        const { start, end } = getPeriodDates(month, closingDay);
+                        const isCurrentMonth = isWithinInterval(today, { start, end });
+                        return (
+                            <td key={index} className={`px-6 py-3 text-right ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{formatCell(total)}
+                            </td>
+                        )
+                    })}
                     <td className="px-6 py-3 text-right">{formatCell(grandTotal)}</td>
                 </tr>
             </tfoot>
