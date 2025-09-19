@@ -143,3 +143,15 @@ function canWork(emp: Employee, dateStr: string, schedule: Schedule): boolean {
 
     return true;
 }
+
+function subDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() - amount);
+    return newDate;
+}
+
+function addDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + amount);
+    return newDate;
+}
