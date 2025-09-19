@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 // GET handler to fetch a single employee by ID
 export async function GET(request: NextRequest, { params }: any) {
   try {
-    const sql = 'SELECT id, name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year FROM employees WHERE id = $1';
+    const sql = 'SELECT id, name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year FROM employees WHERE id = $1';
     const result = await query(sql, [params.id]);
     const employee = result.rows[0];
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: any) {
 export async function PUT(request: NextRequest, { params }: any) {
   try {
     const employeeData = await request.json();
-    const { name, hourly_wage, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year } = employeeData;
+    const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year } = employeeData;
 
     if (!name || !hourly_wage) {
       return NextResponse.json({ error: '名前と時給は必須です。' }, { status: 400 });
@@ -34,11 +34,13 @@ export async function PUT(request: NextRequest, { params }: any) {
     const queryParams = [];
     let paramIndex = 1;
 
-    // 動的にクエリを構築
+    // Dynamically build the query
     updateFields.push(`name = $${paramIndex++}`);
     queryParams.push(name);
     updateFields.push(`hourly_wage = $${paramIndex++}`);
     queryParams.push(hourly_wage);
+    updateFields.push(`group_name = $${paramIndex++}`);
+    queryParams.push(group_name);
     updateFields.push(`max_weekly_hours = $${paramIndex++}`);
     queryParams.push(max_weekly_hours);
     updateFields.push(`max_weekly_days = $${paramIndex++}`);

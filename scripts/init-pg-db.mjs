@@ -26,7 +26,7 @@ async function createTables() {
     // Create Employees Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS employees (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         hourly_wage INTEGER NOT NULL,
@@ -35,12 +35,30 @@ async function createTables() {
         annual_income_limit INTEGER,
         default_work_hours TEXT,
         request_type TEXT DEFAULT 'holiday' NOT NULL, -- 'holiday' or 'work'
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        initial_income INTEGER,
+        initial_income_year INTEGER,
+        group_name VARCHAR(50)
       );
     `);
     console.log('Table "employees" created or already exists.');
 
-    // Create Shifts Table
+    // Drop default on employees.id if it exists
+    const idSerialCheck = await client.query(`
+      SELECT column_default 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+        AND table_name = 'employees' 
+        AND column_name = 'id' 
+        AND column_default LIKE 'nextval%';
+    `);
+    if (idSerialCheck.rows.length > 0) {
+      console.log('Migrating schema: Changing employees.id from SERIAL to INTEGER...');
+      await client.query(`ALTER TABLE employees ALTER COLUMN id DROP DEFAULT;`);
+      console.log('SUCCESS: employees.id is now manually assigned.');
+    }
+
+    // Create other tables...
     await client.query(`
       CREATE TABLE IF NOT EXISTS shifts (
         id SERIAL PRIMARY KEY,
@@ -52,7 +70,6 @@ async function createTables() {
     `);
     console.log('Table "shifts" created or already exists.');
 
-    // Create Shift Requests Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS shift_requests (
         id SERIAL PRIMARY KEY,
@@ -64,19 +81,19 @@ async function createTables() {
     `);
     console.log('Table "shift_requests" created or already exists.');
 
-    // Create Actual Work Hours Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS actual_work_hours (
         id SERIAL PRIMARY KEY,
         shift_id INTEGER NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
         actual_start_time TIME NOT NULL, -- HH:MM
         actual_end_time TIME NOT NULL, -- HH:MM
-        notes TEXT
+        notes TEXT,
+        break_hours NUMERIC(4, 2) DEFAULT 1.0,
+        hourly_wage INTEGER
       );
     `);
     console.log('Table "actual_work_hours" created or already exists.');
 
-    // Create Company Holidays Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS company_holidays (
         date DATE PRIMARY KEY,
@@ -85,7 +102,6 @@ async function createTables() {
     `);
     console.log('Table "company_holidays" created or already exists.');
 
-    // Create Daily Notes Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS daily_notes (
         date DATE PRIMARY KEY,
@@ -94,54 +110,6 @@ async function createTables() {
     `);
     console.log('Table "daily_notes" created or already exists.');
 
-    // --- Schema Migration: Add break_hours if it doesn't exist ---
-    const columnCheck = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' 
-        AND table_name = 'actual_work_hours' 
-        AND column_name = 'break_hours'
-    `);
-
-    if (columnCheck.rows.length === 0) {
-      console.log('Migrating schema: Adding "break_hours" column to "actual_work_hours" table...');
-      await client.query(`
-        ALTER TABLE actual_work_hours
-        ADD COLUMN break_hours NUMERIC(4, 2) DEFAULT 1.0
-      `);
-      console.log('SUCCESS: "break_hours" column added.');
-    } else {
-      console.log('INFO: "break_hours" column already exists. No migration needed.');
-    }
-
-    // --- Schema Migration: Add initial_income to employees ---
-    const initialIncomeCheck = await client.query(`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'employees' AND column_name = 'initial_income'
-    `);
-    if (initialIncomeCheck.rows.length === 0) {
-      console.log('Migrating schema: Adding "initial_income" columns to "employees" table...');
-      await client.query(`ALTER TABLE employees ADD COLUMN initial_income INTEGER DEFAULT 0`);
-      await client.query(`ALTER TABLE employees ADD COLUMN initial_income_year INTEGER`);
-      console.log('SUCCESS: "initial_income" columns added.');
-    } else {
-      console.log('INFO: "initial_income" columns already exists.');
-    }
-
-    // --- Schema Migration: Add hourly_wage to actual_work_hours ---
-    const hourlyWageCheck = await client.query(`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'actual_work_hours' AND column_name = 'hourly_wage'
-    `);
-    if (hourlyWageCheck.rows.length === 0) {
-      console.log('Migrating schema: Adding "hourly_wage" column to "actual_work_hours" table...');
-      await client.query(`ALTER TABLE actual_work_hours ADD COLUMN hourly_wage INTEGER`);
-      console.log('SUCCESS: "hourly_wage" column added.');
-    } else {
-      console.log('INFO: "hourly_wage" column already exists.');
-    }
-
-    // --- Create Auth Tokens Table ---
     await client.query(`
       CREATE TABLE IF NOT EXISTS auth_tokens (
         id SERIAL PRIMARY KEY,
@@ -153,39 +121,14 @@ async function createTables() {
     `);
     console.log('Table "auth_tokens" created or already exists.');
 
-    // --- Schema Migration: Change employees.id from SERIAL to INTEGER ---
-    const idSerialCheck = await client.query(`
-      SELECT column_default 
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' 
-        AND table_name = 'employees' 
-        AND column_name = 'id' 
-        AND column_default LIKE 'nextval%';
-    `);
-
-    if (idSerialCheck.rows.length > 0) {
-      console.log('Migrating schema: Changing employees.id from SERIAL to INTEGER...');
-      // The column type is already integer, we just need to drop the default sequence.
-      await client.query(`ALTER TABLE employees ALTER COLUMN id DROP DEFAULT;`);
-      // It's good practice to also drop the sequence itself if it's no longer needed,
-      // but that requires knowing the sequence name (e.g., employees_id_seq). 
-      // For simplicity and safety, we'll just drop the default value linkage.
-      console.log('SUCCESS: employees.id is now manually assigned.');
-    } else {
-      console.log('INFO: employees.id is already manually assigned.');
-    }
-
-    // Commit transaction
     await client.query('COMMIT');
-    console.log('Successfully created all tables!');
+    console.log('Successfully created/updated all tables!');
 
   } catch (err) {
-    // Rollback transaction on error
     await client.query('ROLLBACK');
-    console.error('Error creating tables, rolled back transaction:', err);
-    process.exit(1); // Exit with error
+    console.error('Error updating tables, rolled back transaction:', err);
+    process.exit(1);
   } finally {
-    // Release the client and end the pool
     client.release();
     await pool.end();
     console.log('Database connection closed.');

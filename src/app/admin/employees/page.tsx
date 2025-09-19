@@ -8,6 +8,7 @@ interface Employee {
   name: string;
   hourly_wage: number;
   request_type: 'holiday' | 'work';
+  group_name?: string | null;
   max_weekly_hours?: number | null;
   max_weekly_days?: number | null;
   annual_income_limit?: number | null;
@@ -17,10 +18,11 @@ interface Employee {
 }
 
 const initialFormState = {
-  id: 0,
+  id: '' as any as number, // Allow empty string for initial state
   name: '',
   hourly_wage: '',
   password: '',
+  group_name: '',
   max_weekly_hours: '',
   max_weekly_days: '',
   annual_income_limit: '',
@@ -70,6 +72,7 @@ export default function ManageEmployeesPage() {
       name: emp.name,
       hourly_wage: String(emp.hourly_wage),
       password: '',
+      group_name: emp.group_name || '',
       max_weekly_hours: String(emp.max_weekly_hours || ''),
       max_weekly_days: String(emp.max_weekly_days || ''),
       annual_income_limit: String(emp.annual_income_limit || ''),
@@ -94,6 +97,7 @@ export default function ManageEmployeesPage() {
         id: Number(formState.id),
         name: formState.name,
         hourly_wage: Number(formState.hourly_wage),
+        group_name: formState.group_name || null,
         max_weekly_hours: formState.max_weekly_hours ? Number(formState.max_weekly_hours) : null,
         max_weekly_days: formState.max_weekly_days ? Number(formState.max_weekly_days) : null,
         annual_income_limit: formState.annual_income_limit ? Number(formState.annual_income_limit) : null,
@@ -165,6 +169,10 @@ export default function ManageEmployeesPage() {
               <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" required />
             </div>
             <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">グループ (A, B, Cなど)</label>
+              <input type="text" name="group_name" value={formState.group_name} onChange={handleInputChange} className="mt-1 w-full form-input" />
+            </div>
+            <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">提出区分</label>
               <select name="request_type" value={formState.request_type} onChange={handleInputChange} className="mt-1 w-full form-select">
                 <option value="holiday">希望休</option>
@@ -223,6 +231,7 @@ export default function ManageEmployeesPage() {
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">ID</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">氏名</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">グループ</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">提出区分</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週時間</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週日数</th>
@@ -236,6 +245,7 @@ export default function ManageEmployeesPage() {
                     <tr key={emp.id} className="hover:bg-gray-100">
                       <td onClick={() => handleSelectEmployee(emp)} className="px-2 py-2 cursor-pointer">{emp.id}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.name}</td>
+                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.group_name || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.request_type === 'work' ? '希望出勤' : '希望休'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_days || '-'}</td>
