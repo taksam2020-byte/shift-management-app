@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         const requests: ShiftRequest[] = requestsResult.rows.map((r: { employee_id: number, date: string, request_type: 'holiday' | 'work' }) => ({ ...r, date: format(parseISO(r.date), 'yyyy-MM-dd') }));
         
         const holidaysResult = await query('SELECT date FROM company_holidays WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
-        const holidays = new Set(holidaysResult.rows.map(h => format(parseISO(h.date), 'yyyy-MM-dd')));
+        const holidays = new Set(holidaysResult.rows.map((h: { date: string }) => format(parseISO(h.date), 'yyyy-MM-dd')));
 
         // --- Main Algorithm ---
         const schedule: Schedule = {};
