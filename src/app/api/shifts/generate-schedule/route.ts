@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import { eachDayOfInterval, format, getDay, startOfWeek, parseISO } from 'date-fns';
+import { eachDayOfInterval, format, getDay, startOfWeek, parseISO, subDays, addDays } from 'date-fns';
 
 // --- Types ---
 interface Employee {
@@ -117,11 +117,13 @@ export async function POST(request: Request) {
 // Helper function to check constraints
 function canWork(emp: Employee, dateStr: string, schedule: Schedule, requests: ShiftRequest[]): boolean {
     // 1. Check for explicit holiday request for that day
-    const holidayRequest = requests.some(r => r.employee_id === emp.id && r.date === dateStr && r.request_type === 'holiday');
-    if (holidayRequest) return false;
+    const hasHolidayRequest = requests.some(r => r.employee_id === emp.id && r.date === dateStr && r.request_type === 'holiday');
+    if (hasHolidayRequest) {
+        return false;
+    }
 
     // 2. Check if already assigned a shift for that day
-    if (schedule[dateStr] && schedule[dateStr][emp.id] && schedule[dateStr][emp.id] !== '休み') {
+    if (schedule[dateStr][emp.id] && schedule[dateStr][emp.id] !== '休み') {
         return false;
     }
 
@@ -141,17 +143,4 @@ function canWork(emp: Employee, dateStr: string, schedule: Schedule, requests: S
     }
 
     return true;
-}
-
-// date-fns doesn't have subDays, so we create a simple version
-function subDays(date: Date, amount: number): Date {
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() - amount);
-    return newDate;
-}
-
-function addDays(date: Date, amount: number): Date {
-    const newDate = new Date(date);
-    newDate.setDate(newDate.getDate() + amount);
-    return newDate;
 }
