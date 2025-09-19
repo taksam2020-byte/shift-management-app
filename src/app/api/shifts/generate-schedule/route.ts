@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         const employees: Employee[] = employeesResult.rows;
 
         const requestsResult = await query('SELECT employee_id, date, request_type FROM shift_requests WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
-        const requests: ShiftRequest[] = requestsResult.rows.map((r: { date: string; [key: string]: any }) => ({ ...r, date: format(parseISO(r.date), 'yyyy-MM-dd') }));
+        const requests: ShiftRequest[] = requestsResult.rows.map((r: { employee_id: number, date: string, request_type: 'holiday' | 'work' }) => ({ ...r, date: format(parseISO(r.date), 'yyyy-MM-dd') }));
         
         const holidaysResult = await query('SELECT date FROM company_holidays WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
         const holidays = new Set(holidaysResult.rows.map(h => format(parseISO(h.date), 'yyyy-MM-dd')));
