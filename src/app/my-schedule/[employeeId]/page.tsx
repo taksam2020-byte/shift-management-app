@@ -16,7 +16,22 @@ interface Shift {
   actual_end_time?: string | null;
   break_hours?: number | null;
 }
-interface Employee { id: number; name: string; group_name?: string | null; }
+
+// This interface must match all fields returned by /api/employees/[id]
+interface Employee { 
+  id: number; 
+  name: string; 
+  hourly_wage: number;
+  group_name?: string | null;
+  max_weekly_hours?: number | null;
+  max_weekly_days?: number | null;
+  annual_income_limit?: number | null;
+  default_work_hours?: string | null;
+  request_type?: 'holiday' | 'work';
+  created_at?: string;
+  initial_income?: number | null;
+  initial_income_year?: number | null;
+}
 
 // --- Helper ---
 const getPayPeriodInterval = (date: Date) => {
@@ -127,7 +142,7 @@ export default function MySchedulePage() {
         try {
             const empResponse = await fetch(`/api/employees/${employeeId}`);
             if (!empResponse.ok) throw new Error('従業員情報の取得に失敗しました。');
-            const empData = await empResponse.json();
+            const empData: Employee = await empResponse.json();
             setEmployee(empData);
 
             const { start, end } = getPayPeriodInterval(currentDate);
