@@ -230,6 +230,45 @@ export default function SchedulePage() {
     }
   };
 
+  const handleGenerateSchedule = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const { start, end } = getPayPeriodInterval(currentDate);
+        const response = await fetch('/api/shifts/generate-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                startDate: format(start, 'yyyy-MM-dd'), 
+                endDate: format(end, 'yyyy-MM-dd') 
+            }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '自動作成に失敗しました。');
+        }
+        const generatedSchedule = await response.json();
+        
+        const newSchedule: ScheduleState = {};
+        Object.entries(generatedSchedule).forEach(([date, shifts]) => {
+            newSchedule[date] = {};
+            Object.entries(shifts as Record<string, string>).forEach(([empId, time]) => {
+                if (time !== '休み') {
+                    newSchedule[date][Number(empId)] = time;
+                }
+            });
+        });
+
+        setSchedule(newSchedule);
+        validateSchedule(newSchedule, employees);
+
+    } catch (err) {
+        alert(err instanceof Error ? err.message : '自動作成中にエラーが発生しました。');
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   // --- Render ---
   const totalsByEmployee = useMemo(() => {
     const totals: Record<number, number> = {};
@@ -257,7 +296,6 @@ export default function SchedulePage() {
 
         const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
         
-        // Calculate this month's projected income from the schedule state
         let thisMonthProjectedIncome = 0;
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
@@ -268,7 +306,7 @@ export default function SchedulePage() {
             }
         });
 
-        const remainingMonths = 12 - (currentDate.getMonth()); // Including current month
+        const remainingMonths = 12 - (currentDate.getMonth());
         const remainingAnnualBudget = annualIncomeLimit - pastIncome;
         const averageMonthlyBudget = remainingAnnualBudget / remainingMonths;
         const remainingThisMonthBudget = averageMonthlyBudget - thisMonthProjectedIncome;
@@ -285,7 +323,7 @@ export default function SchedulePage() {
     setAnnualIncomes(newAnnualIncomes);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schedule, employees, days, currentDate]); // Recalculate when schedule changes
+  }, [schedule, employees, days, currentDate]);
 
   if (isLoading) return <p className="p-4 text-center">スケジュールを読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
@@ -299,6 +337,7 @@ export default function SchedulePage() {
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">次月</button>
         </div>
         <button onClick={handleSave} className="w-full mb-4 py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600">このスケジュールを保存する</button>
+        <button onClick={handleGenerateSchedule} className="w-full mb-4 py-2 px-4 bg-green-500 text-white font-bold rounded hover:bg-green-600 disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
       </div>
       <div className="flex-grow overflow-auto">
         <table className="min-w-full border-collapse">
