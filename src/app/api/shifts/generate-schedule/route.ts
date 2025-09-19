@@ -142,3 +142,16 @@ function canWork(emp: Employee, dateStr: string, schedule: Schedule, requests: S
 
     return true;
 }
+
+// date-fns doesn't have subDays, so we create a simple version
+function subDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() - amount);
+    return newDate;
+}
+
+function addDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + amount);
+    return newDate;
+}
