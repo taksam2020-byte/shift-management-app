@@ -59,8 +59,8 @@ const calculateDuration = (start: string, end: string): number => {
 };
 
 function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, start: string, end: string, breakHours: number) => Promise<void> }) {
-    const [actualStart, setActualStart] = useState(shift.actual_start_time ? shift.actual_start_time.substring(0, 5) : shift.start_time.substring(0, 5));
-    const [actualEnd, setActualEnd] = useState(shift.actual_end_time ? shift.actual_end_time.substring(0, 5) : shift.end_time.substring(0, 5));
+    const [actualStart, setActualStart] = useState(shift.actual_start_time?.substring(0, 5) || shift.start_time?.substring(0, 5) || '');
+    const [actualEnd, setActualEnd] = useState(shift.actual_end_time?.substring(0, 5) || shift.end_time?.substring(0, 5) || '');
     const [breakHours, setBreakHours] = useState(shift.break_hours ?? 1);
     
     const canEdit = isPast(parseISO(shift.date));
@@ -86,7 +86,7 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
         <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
             <div className="flex justify-between items-center w-full mb-3">
                 <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
-                <p className="text-sm text-gray-600">予定: {shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)}</p>
+                <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
             </div>
             <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full">
                 <ActualsInput 
@@ -134,27 +134,22 @@ export default function MySchedulePage() {
   useEffect(() => {
     const fetchMySchedule = async () => {
         if (!employeeId) return;
-        console.log(`[DEBUG] Fetching data for employeeId: ${employeeId}`);
         setIsLoading(true);
         setError(null);
 
         try {
-            console.log('[DEBUG] Fetching employee data...');
             const empResponse = await fetch(`/api/employees/${employeeId}`);
             if (!empResponse.ok) throw new Error('従業員情報の取得に失敗しました。');
             const empData: Employee = await empResponse.json();
-            console.log('[DEBUG] Employee data received:', empData);
             setEmployee(empData);
 
             const { start, end } = getPayPeriodInterval(currentDate);
             const startDateStr = format(start, 'yyyy-MM-dd');
             const endDateStr = format(end, 'yyyy-MM-dd');
 
-            console.log(`[DEBUG] Fetching shifts from ${startDateStr} to ${endDateStr}...`);
             const shiftResponse = await fetch(`/api/shifts?employeeId=${employeeId}&startDate=${startDateStr}&endDate=${endDateStr}`);
             if (!shiftResponse.ok) throw new Error('シフトの取得に失敗しました。');
             const shiftData: Shift[] = await shiftResponse.json();
-            console.log('[DEBUG] Shift data received:', shiftData);
 
             const sortedShifts = shiftData.sort((a, b) => {
                 const aIsSaved = !!a.actual_id;
@@ -166,10 +161,8 @@ export default function MySchedulePage() {
             });
 
             setShifts(sortedShifts);
-            console.log('[DEBUG] Data fetching and processing complete.');
 
         } catch (err) {
-            console.error('[DEBUG] An error occurred:', err);
             setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
         } finally {
             setIsLoading(false);
