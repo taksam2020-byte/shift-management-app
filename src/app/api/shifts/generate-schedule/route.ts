@@ -96,9 +96,7 @@ export async function POST(request: Request) {
             const availableEmployees = employees.filter(emp => canWork(emp, dateStr, schedule) && !groupsInDay.has(emp.group_name));
 
             availableEmployees.forEach(emp => {
-                 if (canWork(emp, dateStr, schedule)) {
-                    schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
-                 }
+                schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
             });
         });
         
