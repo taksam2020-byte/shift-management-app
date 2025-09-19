@@ -18,7 +18,7 @@ interface Employee {
 }
 
 const initialFormState = {
-  id: '' as any as number, // Allow empty string for initial state
+  id: '' as number | '', // Allow empty string for initial state, but treat as number
   name: '',
   hourly_wage: '',
   password: '',
