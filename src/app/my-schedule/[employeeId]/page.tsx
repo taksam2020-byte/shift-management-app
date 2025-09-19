@@ -16,7 +16,7 @@ interface Shift {
   actual_end_time?: string | null;
   break_hours?: number | null;
 }
-interface Employee { id: number; name: string; }
+interface Employee { id: number; name: string; group_name?: string | null; }
 
 // --- Helper ---
 const getPayPeriodInterval = (date: Date) => {

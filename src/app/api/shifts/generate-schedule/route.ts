@@ -116,22 +116,28 @@ export async function POST(request: Request) {
 
 // Helper function to check constraints
 function canWork(emp: Employee, dateStr: string, schedule: Schedule, requests: ShiftRequest[]): boolean {
-    // Already assigned or on holiday
-    if (schedule[dateStr][emp.id] && schedule[dateStr][emp.id] !== '休み') return false;
-    if (requests.some(r => r.employee_id === emp.id && r.date === dateStr && r.request_type === 'holiday')) return false;
+    // 1. Check for explicit holiday request for that day
+    const holidayRequest = requests.some(r => r.employee_id === emp.id && r.date === dateStr && r.request_type === 'holiday');
+    if (holidayRequest) return false;
 
-    // Check weekly limits (simplified)
-    const weekStart = format(startOfWeek(parseISO(dateStr), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    let daysInWeek = 0;
-    for (let i = 0; i < 7; i++) {
-        const d = format(addDays(parseISO(weekStart), i), 'yyyy-MM-dd');
-        if (schedule[d] && schedule[d][emp.id] && schedule[d][emp.id] !== '休み') {
-            daysInWeek++;
-        }
+    // 2. Check if already assigned a shift for that day
+    if (schedule[dateStr] && schedule[dateStr][emp.id] && schedule[dateStr][emp.id] !== '休み') {
+        return false;
     }
 
-    if (emp.max_weekly_days && daysInWeek >= emp.max_weekly_days) {
-        return false;
+    // 3. Check weekly limits
+    if (emp.max_weekly_days) {
+        const weekStart = startOfWeek(parseISO(dateStr), { weekStartsOn: 1 });
+        let daysInWeek = 0;
+        for (let i = 0; i < 7; i++) {
+            const d = format(addDays(weekStart, i), 'yyyy-MM-dd');
+            if (schedule[d] && schedule[d][emp.id] && schedule[d][emp.id] !== '休み') {
+                daysInWeek++;
+            }
+        }
+        if (daysInWeek >= emp.max_weekly_days) {
+            return false;
+        }
     }
 
     return true;
