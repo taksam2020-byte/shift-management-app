@@ -17,7 +17,6 @@ interface Shift {
   break_hours?: number | null;
 }
 
-// This interface must match all fields returned by /api/employees/[id]
 interface Employee { 
   id: number; 
   name: string; 
@@ -59,10 +58,9 @@ const calculateDuration = (start: string, end: string): number => {
     return duration > 0 ? duration : 0;
 };
 
-// --- Sub-component for a single shift row ---
 function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, start: string, end: string, breakHours: number) => Promise<void> }) {
-    const [actualStart, setActualStart] = useState(shift.actual_start_time ? shift.actual_start_time.substring(0, 5) : shift.start_time.substring(0, 5));
-    const [actualEnd, setActualEnd] = useState(shift.actual_end_time ? shift.actual_end_time.substring(0, 5) : shift.end_time.substring(0, 5));
+    const [actualStart, setActualStart] = useState(shift.actual_start_time?.substring(0, 5) || shift.start_time?.substring(0, 5) || '');
+    const [actualEnd, setActualEnd] = useState(shift.actual_end_time?.substring(0, 5) || shift.end_time?.substring(0, 5) || '');
     const [breakHours, setBreakHours] = useState(shift.break_hours ?? 1);
     
     const canEdit = isPast(parseISO(shift.date));
@@ -88,7 +86,7 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
         <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
             <div className="flex justify-between items-center w-full mb-3">
                 <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
-                <p className="text-sm text-gray-600">予定: {shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)}</p>
+                <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
             </div>
             <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full">
                 <ActualsInput 

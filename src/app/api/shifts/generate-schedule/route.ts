@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import { eachDayOfInterval, format, getDay, startOfWeek, parseISO } from 'date-fns';
+import { eachDayOfInterval, format, getDay, startOfWeek, parseISO, addDays, subDays } from 'date-fns';
 
 // --- Types ---
 interface Employee {
@@ -40,64 +40,67 @@ export async function POST(request: Request) {
         const holidaysResult = await query('SELECT date FROM company_holidays WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
         const holidays = new Set(holidaysResult.rows.map((h: { date: string }) => format(parseISO(h.date), 'yyyy-MM-dd')));
 
+        // --- Pre-process requests for easier lookup ---
+        const holidayRequests = new Map<number, Set<string>>();
+        const workRequests = new Map<number, Set<string>>();
+        requests.forEach(req => {
+            const map = req.request_type === 'holiday' ? holidayRequests : workRequests;
+            if (!map.has(req.employee_id)) {
+                map.set(req.employee_id, new Set());
+            }
+            map.get(req.employee_id)!.add(req.date);
+        });
+
         // --- Main Algorithm ---
         const schedule: Schedule = {};
         const days = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
 
-        // Initialize schedule with empty shifts
+        // Initialize schedule
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             schedule[dateStr] = {};
+            // Apply holiday requests first
+            employees.forEach(emp => {
+                if (holidayRequests.get(emp.id)?.has(dateStr)) {
+                    schedule[dateStr][emp.id] = '休み';
+                }
+            });
         });
 
-        // 2. Apply hard constraints (Holiday requests)
-        requests.forEach(req => {
-            if (req.request_type === 'holiday') {
-                schedule[req.date][req.employee_id] = '休み';
-            }
-        });
-
-        // 3. Apply prioritized rules
+        // --- Assignment Logic ---
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayOfWeek = getDay(day);
             const isPostHoliday = dayOfWeek === 1 || holidays.has(format(subDays(day, 1), 'yyyy-MM-dd'));
 
-            // Rule: Assign work on post-holidays
+            // Rule 1: Post-holiday assignment
             if (isPostHoliday) {
                 employees.forEach(emp => {
-                    if (canWork(emp, dateStr, schedule, requests)) {
+                    if (canWork(emp, dateStr, schedule)) {
                         schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
                     }
                 });
             }
-        });
 
-        // 4. Fill remaining shifts based on work requests and group distribution
-        days.forEach(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const workRequests = requests.filter(r => r.date === dateStr && r.request_type === 'work');
-            
-            // Assign employees who requested to work
-            workRequests.forEach(req => {
-                const emp = employees.find(e => e.id === req.employee_id);
-                if (emp && canWork(emp, dateStr, schedule, requests)) {
+            // Rule 2: Work requests assignment
+            employees.forEach(emp => {
+                if (workRequests.get(emp.id)?.has(dateStr) && canWork(emp, dateStr, schedule)) {
                     schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
                 }
             });
 
-            // Rule: Group distribution (simple version)
-            const groupsInDay = new Set(Object.keys(schedule[dateStr]).map(empId => employees.find(e => e.id === Number(empId))?.group_name).filter(Boolean));
-            const availableEmployees = employees.filter(emp => canWork(emp, dateStr, schedule, requests) && !groupsInDay.has(emp.group_name));
+            // Rule 3: Group distribution (simple version)
+            const groupsInDay = new Set(Object.values(schedule[dateStr]).length > 0 ? 
+                Object.keys(schedule[dateStr]).map(empId => employees.find(e => e.id === Number(empId))?.group_name).filter(Boolean) : []
+            );
+            const availableEmployees = employees.filter(emp => canWork(emp, dateStr, schedule) && !groupsInDay.has(emp.group_name));
 
             availableEmployees.forEach(emp => {
-                 if (canWork(emp, dateStr, schedule, requests)) {
-                    schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
-                 }
+                schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
             });
         });
         
-        // Replace empty slots with '休み' for clarity.
+        // Final cleanup: Mark unassigned slots as '休み'
         Object.keys(schedule).forEach(date => {
             employees.forEach(emp => {
                 if (!schedule[date][emp.id]) {
@@ -115,17 +118,13 @@ export async function POST(request: Request) {
 }
 
 // Helper function to check constraints
-function canWork(emp: Employee, dateStr: string, schedule: Schedule, requests: ShiftRequest[]): boolean {
-    // 1. Check for explicit holiday request for that day
-    const holidayRequest = requests.some(r => r.employee_id === emp.id && r.date === dateStr && r.request_type === 'holiday');
-    if (holidayRequest) return false;
-
-    // 2. Check if already assigned a shift for that day
-    if (schedule[dateStr] && schedule[dateStr][emp.id] && schedule[dateStr][emp.id] !== '休み') {
+function canWork(emp: Employee, dateStr: string, schedule: Schedule): boolean {
+    // Already assigned or on holiday
+    if (schedule[dateStr][emp.id]) {
         return false;
     }
 
-    // 3. Check weekly limits
+    // Check weekly limits
     if (emp.max_weekly_days) {
         const weekStart = startOfWeek(parseISO(dateStr), { weekStartsOn: 1 });
         let daysInWeek = 0;
