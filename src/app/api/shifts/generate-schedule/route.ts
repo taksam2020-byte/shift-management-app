@@ -24,23 +24,30 @@ interface Schedule {
 
 // --- Main Handler ---
 export async function POST(request: Request) {
+    console.log('[GENERATE_SCHEDULE] Received request');
     try {
         const { startDate, endDate } = await request.json();
+        console.log(`[GENERATE_SCHEDULE] Period: ${startDate} to ${endDate}`);
         if (!startDate || !endDate) {
             return NextResponse.json({ error: 'Start and end date are required' }, { status: 400 });
         }
 
         // 1. Fetch all necessary data
+        console.log('[GENERATE_SCHEDULE] Fetching data...');
         const employeesResult = await query('SELECT id, name, group_name, default_work_hours, max_weekly_hours, max_weekly_days FROM employees ORDER BY id');
         const employees: Employee[] = employeesResult.rows;
+        console.log(`[GENERATE_SCHEDULE] Found ${employees.length} employees.`);
 
         const requestsResult = await query('SELECT employee_id, date, request_type FROM shift_requests WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
         const requests: ShiftRequest[] = requestsResult.rows.map((r: { employee_id: number, date: string, request_type: 'holiday' | 'work' }) => ({ ...r, date: format(parseISO(r.date), 'yyyy-MM-dd') }));
+        console.log(`[GENERATE_SCHEDULE] Found ${requests.length} requests.`);
         
         const holidaysResult = await query('SELECT date FROM company_holidays WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
         const holidays = new Set(holidaysResult.rows.map((h: { date: string }) => format(parseISO(h.date), 'yyyy-MM-dd')));
+        console.log(`[GENERATE_SCHEDULE] Found ${holidays.size} company holidays.`);
 
         // --- Pre-process requests for easier lookup ---
+        console.log('[GENERATE_SCHEDULE] Pre-processing requests...');
         const holidayRequests = new Map<number, Set<string>>();
         const workRequests = new Map<number, Set<string>>();
         requests.forEach(req => {
@@ -52,28 +59,28 @@ export async function POST(request: Request) {
         });
 
         // --- Main Algorithm ---
+        console.log('[GENERATE_SCHEDULE] Initializing schedule...');
         const schedule: Schedule = {};
         const days = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
 
-        // Initialize schedule
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             schedule[dateStr] = {};
-            // Apply holiday requests first
             employees.forEach(emp => {
                 if (holidayRequests.get(emp.id)?.has(dateStr)) {
                     schedule[dateStr][emp.id] = '休み';
                 }
             });
         });
+        console.log('[GENERATE_SCHEDULE] Applied holiday requests.');
 
         // --- Assignment Logic ---
+        console.log('[GENERATE_SCHEDULE] Starting assignment logic...');
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayOfWeek = getDay(day);
             const isPostHoliday = dayOfWeek === 1 || holidays.has(format(subDays(day, 1), 'yyyy-MM-dd'));
 
-            // Rule 1: Post-holiday assignment
             if (isPostHoliday) {
                 employees.forEach(emp => {
                     if (canWork(emp, dateStr, schedule)) {
@@ -82,14 +89,12 @@ export async function POST(request: Request) {
                 });
             }
 
-            // Rule 2: Work requests assignment
             employees.forEach(emp => {
                 if (workRequests.get(emp.id)?.has(dateStr) && canWork(emp, dateStr, schedule)) {
                     schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
                 }
             });
 
-            // Rule 3: Group distribution (simple version)
             const groupsInDay = new Set(Object.values(schedule[dateStr]).length > 0 ? 
                 Object.keys(schedule[dateStr]).map(empId => employees.find(e => e.id === Number(empId))?.group_name).filter(Boolean) : []
             );
@@ -99,8 +104,8 @@ export async function POST(request: Request) {
                 schedule[dateStr][emp.id] = emp.default_work_hours || '09:00-17:00';
             });
         });
+        console.log('[GENERATE_SCHEDULE] Assignment logic finished.');
         
-        // Final cleanup: Mark unassigned slots as '休み'
         Object.keys(schedule).forEach(date => {
             employees.forEach(emp => {
                 if (!schedule[date][emp.id]) {
@@ -108,23 +113,21 @@ export async function POST(request: Request) {
                 }
             });
         });
+        console.log('[GENERATE_SCHEDULE] Cleanup complete. Returning schedule.');
 
         return NextResponse.json(schedule);
 
     } catch (error) {
-        console.error('Failed to generate schedule:', error);
+        console.error('[GENERATE_SCHEDULE] CRITICAL ERROR:', error);
         return NextResponse.json({ error: 'Failed to generate schedule' }, { status: 500 });
     }
 }
 
-// Helper function to check constraints
 function canWork(emp: Employee, dateStr: string, schedule: Schedule): boolean {
-    // Already assigned or on holiday
     if (schedule[dateStr][emp.id]) {
         return false;
     }
 
-    // Check weekly limits
     if (emp.max_weekly_days) {
         const weekStart = startOfWeek(parseISO(dateStr), { weekStartsOn: 1 });
         let daysInWeek = 0;
@@ -140,4 +143,16 @@ function canWork(emp: Employee, dateStr: string, schedule: Schedule): boolean {
     }
 
     return true;
+}
+
+function subDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() - amount);
+    return newDate;
+}
+
+function addDays(date: Date, amount: number): Date {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + amount);
+    return newDate;
 }
