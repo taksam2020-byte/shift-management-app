@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import { eachDayOfInterval, format, getDay, startOfWeek, parseISO, addDays, subDays } from 'date-fns';
+import { eachDayOfInterval, format, getDay, startOfWeek, parseISO } from 'date-fns';
 
 // --- Types ---
 interface Employee {
