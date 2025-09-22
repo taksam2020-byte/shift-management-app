@@ -132,7 +132,7 @@ function canWork(emp: Employee, dateStr: string, schedule: Schedule): boolean {
         const weekStart = startOfWeek(parseISO(dateStr), { weekStartsOn: 1 });
         let daysInWeek = 0;
         for (let i = 0; i < 7; i++) {
-            const d = format(addDays(weekStart, i), 'yyyy-MM-dd');
+            const d = format(addDays(new Date(weekStart), i), 'yyyy-MM-dd');
             if (schedule[d] && schedule[d][emp.id] && schedule[d][emp.id] !== '休み') {
                 daysInWeek++;
             }
