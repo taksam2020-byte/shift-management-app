@@ -148,10 +148,9 @@ export default function CrossPeriodReportPage() {
                   const { start, end } = getPeriodDates(month, closingDay);
                   const isCurrentMonth = isWithinInterval(today, { start, end });
                   return (
-                    <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-pre-line ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年
-${monthNum}月度`}</th>
+                    <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年 ${monthNum}月度`}</th>
                   )
-                })}
+                })}}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
               </tr>
             </thead>
