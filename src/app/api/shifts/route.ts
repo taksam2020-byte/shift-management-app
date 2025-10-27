@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   const client = await pool.connect();
 
   try {
-    const shiftsToSave: { employee_id: number; date: string; start_time: string; end_time: string; }[] = await request.json();
+    const { shiftsToSave, force = false }: { shiftsToSave: { employee_id: number; date: string; start_time: string; end_time: string; }[], force?: boolean } = await request.json();
 
     if (!Array.isArray(shiftsToSave)) {
         return NextResponse.json({ error: 'Expected an array of shift objects' }, { status: 400 });
@@ -70,22 +70,22 @@ export async function POST(request: Request) {
             const existingShift = existingResult.rows[0];
 
             if (existingShift) {
-                // Check if actuals exist before updating/deleting
                 const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
+                
                 if (actualsResult.rows.length > 0) {
-                    // If we are trying to change or delete a shift with actuals, throw an error
-                    // Allow updates only if the new times are the same as the old ones (no real change)
-                    const oldShiftResult = await client.query('SELECT start_time, end_time FROM shifts WHERE id = $1', [existingShift.id]);
-                    const oldShift = oldShiftResult.rows[0];
-                    const noChange = (oldShift.start_time || '') === (start_time || '') && (oldShift.end_time || '') === (end_time || '');
-                    if (!noChange) {
-                        throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
+                    if (force) {
+                        await client.query('DELETE FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
+                    } else {
+                        const oldShiftResult = await client.query('SELECT start_time, end_time FROM shifts WHERE id = $1', [existingShift.id]);
+                        const oldShift = oldShiftResult.rows[0];
+                        const noChange = (oldShift.start_time || '') === (start_time || '') && (oldShift.end_time || '') === (end_time || '');
+                        if (!noChange) {
+                            throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
+                        }
+                        continue;
                     }
-                    // If no change, just skip to the next iteration
-                    continue;
                 }
 
-                // If shift is being deleted (times are empty)
                 if (!start_time || !end_time) {
                     await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
                 } else {
@@ -95,7 +95,6 @@ export async function POST(request: Request) {
                     );
                 }
             } else if (start_time && end_time) {
-                // Only insert if it's a new shift with actual times
                 await client.query(
                     'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)',
                     [employee_id, date, start_time, end_time]

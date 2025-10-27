@@ -209,86 +209,78 @@ export default function SchedulePage() {
     setDailyNotes(prev => ({ ...prev, [date]: value }));
   };
 
-  const handleSave = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      // --- Diffs for Shifts (if needed in future, for now it sends all) ---
-      const shiftsToSave: Omit<Shift, 'id'>[] = [];
-      Object.entries(schedule).forEach(([date, dailyShifts]) => {
-        Object.entries(dailyShifts).forEach(([employeeId, time]) => {
-          const [start_time, end_time] = time ? time.split('-').map(t => t.trim()) : ['', ''];
-          shiftsToSave.push({ employee_id: Number(employeeId), date, start_time, end_time });
+    const handleSave = async (force = false) => {
+      if (isLoading && !force) return; // Prevent double-clicks unless forcing
+      setIsLoading(true);
+      try {
+        const shiftsToSave: Omit<Shift, 'id'>[] = [];
+        Object.entries(schedule).forEach(([date, dailyShifts]) => {
+          Object.entries(dailyShifts).forEach(([employeeId, time]) => {
+            const [start_time, end_time] = time ? time.split('-').map(t => t.trim()) : ['', ''];
+            shiftsToSave.push({ employee_id: Number(employeeId), date, start_time, end_time });
+          });
         });
-      });
-
-      // --- Diffing for Notes ---
-      const notesToSave: {date: string, note: string}[] = [];
-      const allNoteDates = new Set([...Object.keys(dailyNotes), ...Object.keys(initialDailyNotes)]);
-      
-      allNoteDates.forEach(date => {
-        const currentDateStr = date.substring(0, 10);
-        const initialNote = initialDailyNotes[currentDateStr] || '';
-        const currentNote = dailyNotes[currentDateStr] || '';
-
-        if (initialNote !== currentNote) {
-          notesToSave.push({ date: currentDateStr, note: currentNote });
+  
+        const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date: date.substring(0, 10), note }));
+  
+        const payload = { shiftsToSave, force };
+  
+        const shiftResponse = await fetch('/api/shifts', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(payload) 
+        });
+  
+        if (!shiftResponse.ok) {
+          const errorData = await shiftResponse.json();
+          throw new Error(errorData.details || 'シフトの保存に失敗しました。');
         }
-      });
-
-      if (notesToSave.length === 0 && shiftsToSave.length > 0) {
-         // Only save shifts if notes haven't changed
-      } else if (notesToSave.length === 0) {
-        alert("変更点がありません。");
-        setIsLoading(false);
-        return;
-      }
-
-      // --- API Calls ---
-      const shiftResponse = await fetch('/api/shifts', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(shiftsToSave) 
-      });
-
-      if (!shiftResponse.ok) {
-        const errorData = await shiftResponse.json();
-        throw new Error(`シフトの保存に失敗しました: ${errorData.details || shiftResponse.statusText}`);
-      }
-
-      const noteSavePromises = notesToSave.map(note => 
-        fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(note)
-        }).then(res => {
-          if (!res.ok) {
-            return res.json().then(err => Promise.reject(err));
+  
+        const noteSavePromises = notesToSave.map(note => 
+          fetch('/api/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(note)
+          }).then(res => {
+            if (!res.ok) return res.json().then(err => Promise.reject(err));
+            return res.json();
+          })
+        );
+  
+        await Promise.all(noteSavePromises);
+  
+        alert('シフトと備考を保存しました。');
+        // Re-fetch data to reflect changes
+        const { start, end } = getPayPeriodInterval(currentDate);
+        const fetchStart = new Date(start); fetchStart.setDate(start.getDate() - 7);
+        const fetchEnd = new Date(end); fetchEnd.setDate(end.getDate() + 7);
+        const shiftRes = await fetch(`/api/shifts?startDate=${format(fetchStart, 'yyyy-MM-dd')}&endDate=${format(fetchEnd, 'yyyy-MM-dd')}`);
+        const shiftsData = await shiftRes.json();
+        const initialSchedule: ScheduleState = {};
+        shiftsData.forEach((shift: Shift) => {
+            if (!shift.date) return;
+            const dateStr = shift.date.substring(0, 10);
+            const startTime = shift.start_time?.substring(0, 5);
+            const endTime = shift.end_time?.substring(0, 5);
+            if (!initialSchedule[dateStr]) initialSchedule[dateStr] = {};
+            initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
+        });
+        setSchedule(initialSchedule);
+        validateSchedule(initialSchedule, employees);
+  
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
+        if (errorMessage.includes('実績が入力済みのシフト')) {
+          if (window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？')) {
+            handleSave(true); // Retry with force
           }
-          return res.json();
-        })
-      );
-
-      await Promise.all(noteSavePromises);
-
-      alert('シフトと備考を保存しました。');
-      // Update the baseline after a successful save
-      setInitialDailyNotes(dailyNotes);
-
-    } catch (err: unknown) {
-      console.error('Save failed:', err);
-      let errorMessage = '保存中にエラーが発生しました。';
-      if (err instanceof Error) {
-          errorMessage = err.message;
-      } else if (err && typeof err === 'object' && 'error' in err) {
-          errorMessage = String((err as { error: unknown }).error);
+        } else {
+          alert(errorMessage);
+        }
+      } finally {
+        setIsLoading(false);
       }
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+    };
   const handleGenerateSchedule = async () => {
     setIsLoading(true);
     setError(null);
