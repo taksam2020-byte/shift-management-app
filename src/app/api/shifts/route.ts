@@ -73,9 +73,13 @@ export async function POST(request: Request) {
             const key = `${employee_id}_${date}`;
             const existingShift = currentShiftsMap.get(key);
 
-            const hasChanged = !(existingShift && 
-                                 (existingShift.start_time || '') === (start_time || '') && 
-                                 (existingShift.end_time || '') === (end_time || ''));
+            let hasChanged: boolean;
+            if (!existingShift) {
+                hasChanged = !!(start_time && end_time);
+            } else {
+                hasChanged = (existingShift.start_time || '') !== (start_time || '') || 
+                             (existingShift.end_time || '') !== (end_time || '');
+            }
 
             if (!hasChanged) {
                 continue; // Skip if nothing has changed
