@@ -60,34 +60,27 @@ export async function POST(request: Request) {
     await client.query('BEGIN');
 
     try {
-        // Get current shifts from DB for comparison
         const dates = [...new Set(shiftsToSave.map(s => s.date))];
         const currentShiftsResult = await client.query(
             `SELECT id, employee_id, date, start_time, end_time FROM shifts WHERE date = ANY($1::date[])`,
             [dates]
         );
-        const currentShiftsMap = new Map(currentShiftsResult.rows.map((s: { id: number; employee_id: number; date: Date; start_time: string; end_time: string; }) => [`${s.employee_id}_${s.date.toISOString().substring(0, 10)}`, s]));
+        const currentShifts: { id: number; employee_id: number; date: Date; start_time: string; end_time: string; }[] = currentShiftsResult.rows;
 
         for (const shift of shiftsToSave) {
             const { employee_id, date, start_time, end_time } = shift;
-            const key = `${employee_id}_${date}`;
-            const existingShift = currentShiftsMap.get(key);
+            const existingShift = currentShifts.find(s => s.employee_id === employee_id && s.date.toISOString().substring(0, 10) === date);
 
-            let hasChanged: boolean;
-            if (!existingShift) {
-                hasChanged = !!(start_time && end_time);
-            } else {
-                hasChanged = (existingShift.start_time || '') !== (start_time || '') || 
-                             (existingShift.end_time || '') !== (end_time || '');
-            }
+            const hasChanged = !existingShift || 
+                               (existingShift.start_time || '') !== (start_time || '') || 
+                               (existingShift.end_time || '') !== (end_time || '');
 
             if (!hasChanged) {
-                continue; // Skip if nothing has changed
+                continue;
             }
 
             if (existingShift) {
                 const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
-                
                 if (actualsResult.rows.length > 0) {
                     if (force) {
                         await client.query('DELETE FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
@@ -99,16 +92,10 @@ export async function POST(request: Request) {
                 if (!start_time || !end_time) {
                     await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
                 } else {
-                    await client.query(
-                        'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
-                        [start_time, end_time, existingShift.id]
-                    );
+                    await client.query('UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3', [start_time, end_time, existingShift.id]);
                 }
             } else if (start_time && end_time) {
-                await client.query(
-                    'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)',
-                    [employee_id, date, start_time, end_time]
-                );
+                await client.query('INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)', [employee_id, date, start_time, end_time]);
             }
         }
         await client.query('COMMIT');
