@@ -142,15 +142,15 @@ export default function CrossPeriodReportPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">従業員</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10 w-32">従業員</th>
                 {reportData.months.map(month => {
                   const [year, monthNum] = month.split('-');
                   const { start, end } = getPeriodDates(month, closingDay);
                   const isCurrentMonth = isWithinInterval(today, { start, end });
                   return (
-                    <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年 ${monthNum}月度`}</th>
+                    <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-pre-line ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年\n${monthNum}月度`}</th>
                   )
-                })}
+                })}}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
               </tr>
             </thead>
