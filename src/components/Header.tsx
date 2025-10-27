@@ -10,6 +10,7 @@ interface User {
   id: number;
   name: string;
   isAdmin: boolean;
+  isViewer?: boolean;
   request_type?: 'holiday' | 'work';
 }
 
@@ -42,6 +43,14 @@ export default function Header() {
   const inactiveClass = "text-gray-400 hover:text-white";
   const requestLinkText = user?.request_type === 'work' ? '希望出勤日の提出' : '希望休の提出';
 
+  const ViewerLinks = () => (
+    <>
+      <li><Link href="/admin/reports/monthly" className={pathname === '/admin/reports/monthly' ? activeClass : inactiveClass}>月間集計</Link></li>
+      <li><Link href="/admin/reports/cross-period" className={pathname === '/admin/reports/cross-period' ? activeClass : inactiveClass}>年間集計</Link></li>
+      <li><Link href="/schedule/view" className={pathname === '/schedule/view' ? activeClass : inactiveClass}>全体シフト確認</Link></li>
+    </>
+  );
+
   const AdminLinks = () => (
     <>
       <li><Link href="/admin/schedule" className={pathname === '/admin/schedule' ? activeClass : inactiveClass}>シフト作成</Link></li>
@@ -61,6 +70,16 @@ export default function Header() {
     </>
   );
 
+  const renderLinks = () => {
+    if (user?.isViewer) {
+      return <ViewerLinks />;
+    }
+    if (user?.isAdmin) {
+      return <AdminLinks />;
+    }
+    return <EmployeeLinks />;
+  };
+
   return (
     <header className="bg-gray-800 text-white shadow-md sticky top-0 z-20">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
@@ -72,7 +91,7 @@ export default function Header() {
           {user && (
               <nav className="hidden md:block">
                   <ul className="flex items-center gap-6 text-sm pl-1">
-                      {user.isAdmin ? <AdminLinks /> : <EmployeeLinks />}
+                      {renderLinks()}
                   </ul>
               </nav>
           )}
@@ -99,7 +118,7 @@ export default function Header() {
         <div className="md:hidden bg-gray-700 border-t border-gray-600">
             <nav className="container mx-auto px-4 pb-4 pt-2">
                 <ul className="flex flex-col gap-4 text-base">
-                    {user.isAdmin ? <AdminLinks /> : <EmployeeLinks />}
+                    {renderLinks()}
                     <li><hr className="border-gray-600" /></li>
                     <li>
                         <div className="flex justify-between items-center">

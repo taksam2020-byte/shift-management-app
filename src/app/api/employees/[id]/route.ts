@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: any) {
 export async function PUT(request: NextRequest, { params }: any) {
   try {
     const employeeData = await request.json();
-    const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year } = employeeData;
+    const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year, hire_date } = employeeData;
 
     if (!name || !hourly_wage) {
       return NextResponse.json({ error: '名前と時給は必須です。' }, { status: 400 });
@@ -55,6 +55,8 @@ export async function PUT(request: NextRequest, { params }: any) {
     queryParams.push(initial_income);
     updateFields.push(`initial_income_year = $${paramIndex++}`);
     queryParams.push(initial_income_year);
+    updateFields.push(`hire_date = $${paramIndex++}`);
+    queryParams.push(hire_date);
 
     if (password) {
       const saltRounds = 10;

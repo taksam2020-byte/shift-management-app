@@ -70,14 +70,35 @@ export async function POST(request: Request) {
             const existingShift = existingResult.rows[0];
 
             if (existingShift) {
-                await client.query(
-                    'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
-                    [start_time || null, end_time || null, existingShift.id]
-                );
-            } else {
+                // Check if actuals exist before updating/deleting
+                const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
+                if (actualsResult.rows.length > 0) {
+                    // If we are trying to change or delete a shift with actuals, throw an error
+                    // Allow updates only if the new times are the same as the old ones (no real change)
+                    const oldShiftResult = await client.query('SELECT start_time, end_time FROM shifts WHERE id = $1', [existingShift.id]);
+                    const oldShift = oldShiftResult.rows[0];
+                    const noChange = (oldShift.start_time || '') === (start_time || '') && (oldShift.end_time || '') === (end_time || '');
+                    if (!noChange) {
+                        throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
+                    }
+                    // If no change, just skip to the next iteration
+                    continue;
+                }
+
+                // If shift is being deleted (times are empty)
+                if (!start_time || !end_time) {
+                    await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
+                } else {
+                    await client.query(
+                        'UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3',
+                        [start_time, end_time, existingShift.id]
+                    );
+                }
+            } else if (start_time && end_time) {
+                // Only insert if it's a new shift with actual times
                 await client.query(
                     'INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)',
-                    [employee_id, date, start_time || null, end_time || null]
+                    [employee_id, date, start_time, end_time]
                 );
             }
         }
@@ -90,7 +111,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Failed to save shifts:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    const errorMessage = error instanceof Error ? error.message : '保存中にエラーが発生しました。';
     return NextResponse.json({ error: 'Failed to save shifts', details: errorMessage }, { status: 500 });
   } finally {
       client.release();

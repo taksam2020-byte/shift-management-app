@@ -17,7 +17,12 @@ export async function GET(request: Request) {
     // Get holidays between the dates using the library
     const holidays = holiday_jp.between(startDate, endDate);
 
-    return NextResponse.json(holidays);
+    const formattedHolidays = holidays.map(holiday => ({
+      ...holiday,
+      type: 'public_holiday'
+    }));
+
+    return NextResponse.json(formattedHolidays);
   } catch (error) {
     console.error('Failed to fetch holidays:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

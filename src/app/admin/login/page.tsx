@@ -37,6 +37,16 @@ export default function AdminLoginPage() {
     }
   };
 
+  const handleViewerLogin = () => {
+    if (password === 'viewer') {
+      const viewerUser = { id: 0, name: '閲覧者', isAdmin: false, isViewer: true };
+      localStorage.setItem('loggedInUser', JSON.stringify(viewerUser));
+      router.push('/dashboard');
+    } else {
+      setError('閲覧者パスワードが違います。');
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm p-8 space-y-6 bg-white rounded-lg shadow-md">
@@ -63,6 +73,14 @@ export default function AdminLoginPage() {
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"
           >
             {isLoading ? 'ログイン中...' : 'ログイン'}
+          </button>
+          <button
+            type="button"
+            onClick={handleViewerLogin}
+            disabled={isLoading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:bg-gray-400"
+          >
+            閲覧者としてログイン
           </button>
         </form>
       </div>

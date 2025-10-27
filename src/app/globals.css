@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Responsive holiday notes using display property */
+.holiday-short-name {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .holiday-full-name {
+    display: none;
+  }
+  .holiday-short-name {
+    display: inline; /* Or block, depending on desired layout */
+  }
+}

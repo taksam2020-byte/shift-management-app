@@ -61,6 +61,7 @@ export default function SchedulePage() {
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [schedule, setSchedule] = useState<ScheduleState>({});
   const [dailyNotes, setDailyNotes] = useState<DailyNoteState>({});
+  const [initialDailyNotes, setInitialDailyNotes] = useState<DailyNoteState>({}); // For diffing on save
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationErrorState>({});
   const [annualIncomes, setAnnualIncomes] = useState<AnnualIncomeState>({});
@@ -181,8 +182,12 @@ export default function SchedulePage() {
         validateSchedule(initialSchedule, employeesData);
 
         const newNotes: DailyNoteState = {};
-        notesData.forEach(note => { newNotes[note.date] = note.note; });
+        notesData.forEach(note => { 
+          const dateStr = note.date.substring(0, 10);
+          newNotes[dateStr] = note.note; 
+        });
         setDailyNotes(newNotes);
+        setInitialDailyNotes(newNotes);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
@@ -205,28 +210,82 @@ export default function SchedulePage() {
   };
 
   const handleSave = async () => {
-    const shiftsToSave: Omit<Shift, 'id'>[] = [];
-    Object.entries(schedule).forEach(([date, dailyShifts]) => {
-      Object.entries(dailyShifts).forEach(([employeeId, time]) => {
-        const [start_time, end_time] = time ? time.split('-').map(t => t.trim()) : ['', ''];
-        shiftsToSave.push({ employee_id: Number(employeeId), date, start_time, end_time });
-      });
-    });
-
-    const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date, note }));
-
+    if (isLoading) return;
+    setIsLoading(true);
     try {
-      const [shiftResponse, noteResponse] = await Promise.all([
-        fetch('/api/shifts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shiftsToSave) }),
-        fetch('/api/notes/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(notesToSave) })
-      ]);
+      // --- Diffs for Shifts (if needed in future, for now it sends all) ---
+      const shiftsToSave: Omit<Shift, 'id'>[] = [];
+      Object.entries(schedule).forEach(([date, dailyShifts]) => {
+        Object.entries(dailyShifts).forEach(([employeeId, time]) => {
+          const [start_time, end_time] = time ? time.split('-').map(t => t.trim()) : ['', ''];
+          shiftsToSave.push({ employee_id: Number(employeeId), date, start_time, end_time });
+        });
+      });
 
-      if (!shiftResponse.ok || !noteResponse.ok) {
-        throw new Error('保存に失敗しました。');
+      // --- Diffing for Notes ---
+      const notesToSave: {date: string, note: string}[] = [];
+      const allNoteDates = new Set([...Object.keys(dailyNotes), ...Object.keys(initialDailyNotes)]);
+      
+      allNoteDates.forEach(date => {
+        const currentDateStr = date.substring(0, 10);
+        const initialNote = initialDailyNotes[currentDateStr] || '';
+        const currentNote = dailyNotes[currentDateStr] || '';
+
+        if (initialNote !== currentNote) {
+          notesToSave.push({ date: currentDateStr, note: currentNote });
+        }
+      });
+
+      if (notesToSave.length === 0 && shiftsToSave.length > 0) {
+         // Only save shifts if notes haven't changed
+      } else if (notesToSave.length === 0) {
+        alert("変更点がありません。");
+        setIsLoading(false);
+        return;
       }
+
+      // --- API Calls ---
+      const shiftResponse = await fetch('/api/shifts', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(shiftsToSave) 
+      });
+
+      if (!shiftResponse.ok) {
+        const errorData = await shiftResponse.json();
+        throw new Error(`シフトの保存に失敗しました: ${errorData.details || shiftResponse.statusText}`);
+      }
+
+      const noteSavePromises = notesToSave.map(note => 
+        fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(note)
+        }).then(res => {
+          if (!res.ok) {
+            return res.json().then(err => Promise.reject(err));
+          }
+          return res.json();
+        })
+      );
+
+      await Promise.all(noteSavePromises);
+
       alert('シフトと備考を保存しました。');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '保存中にエラーが発生しました。');
+      // Update the baseline after a successful save
+      setInitialDailyNotes(dailyNotes);
+
+    } catch (err: unknown) {
+      console.error('Save failed:', err);
+      let errorMessage = '保存中にエラーが発生しました。';
+      if (err instanceof Error) {
+          errorMessage = err.message;
+      } else if (err && typeof err === 'object' && 'error' in err) {
+          errorMessage = String((err as { error: unknown }).error);
+      }
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -249,13 +308,11 @@ export default function SchedulePage() {
         }
         const generatedSchedule = await response.json();
         
-        const newSchedule: ScheduleState = {};
+        const newSchedule: ScheduleState = { ...schedule };
         Object.entries(generatedSchedule).forEach(([date, shifts]) => {
-            newSchedule[date] = {};
+            if (!newSchedule[date]) newSchedule[date] = {};
             Object.entries(shifts as Record<string, string>).forEach(([empId, time]) => {
-                if (time !== '休み') {
-                    newSchedule[date][Number(empId)] = time;
-                }
+                newSchedule[date][Number(empId)] = time === '休み' ? '' : time;
             });
         });
 
@@ -331,14 +388,14 @@ export default function SchedulePage() {
   return (
     <div className="p-4 flex flex-col h-full">
       <div className="flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-center gap-4 mb-4">
           <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">前月</button>
           <h2 className="text-xl font-semibold">{format(currentDate, 'yyyy年 M月')} ({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</h2>
           <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">次月</button>
         </div>
         <div className="flex gap-4 mb-4">
           <button onClick={handleGenerateSchedule} className="w-full py-2 px-4 bg-green-500 text-white font-bold rounded hover:bg-green-600 disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
-          <button onClick={handleSave} className="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600">このスケジュールを保存する</button>
+          <button onClick={handleSave} className="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={isLoading}>このスケジュールを保存する</button>
         </div>
       </div>
       <div className="flex-grow overflow-auto">
@@ -365,7 +422,7 @@ export default function SchedulePage() {
               return (
                 <tr key={dateStr} className={isWeekendOrHoliday ? 'bg-gray-200' : ''}>
                   <td className={`border border-gray-300 p-2 whitespace-nowrap text-center w-28 ${isWeekendOrHoliday ? 'font-semibold text-red-600' : ''}`}>{format(day, 'M/d')} ({dayOfWeek})</td>
-                  <td className="border border-gray-300 w-24"><input type="text" value={dailyNotes[dateStr] || holiday?.name || ''} onChange={(e) => handleNoteChange(dateStr, e.target.value)} className={`w-full p-1 bg-transparent focus:outline-none focus:bg-white text-center ${isWeekendOrHoliday ? 'text-red-600' : ''}`}/></td>
+                  <td className="border border-gray-300 w-24"><input type="text" value={dailyNotes[dateStr] || holiday?.name || ''} onChange={(e) => handleNoteChange(dateStr, e.target.value)} disabled={!!holiday} className={`w-full p-1 bg-transparent focus:outline-none focus:bg-white text-center ${isWeekendOrHoliday ? 'text-red-600' : ''} ${!!holiday ? 'cursor-not-allowed' : ''}`}/></td>
                   <td className="border border-gray-300 p-2 text-center">{headcount > 0 ? headcount : ''}</td>
                   {employees.map((emp) => {
                     const request = requests.find(r => r.employee_id === emp.id && r.date.substring(0, 10) === dateStr);

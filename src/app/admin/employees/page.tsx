@@ -15,6 +15,7 @@ interface Employee {
   default_work_hours?: string | null;
   initial_income?: number | null;
   initial_income_year?: number | null;
+  hire_date?: string | null;
 }
 
 const initialFormState = {
@@ -30,6 +31,7 @@ const initialFormState = {
   request_type: 'holiday' as 'holiday' | 'work',
   initial_income: '',
   initial_income_year: new Date().getFullYear().toString(),
+  hire_date: '',
 };
 
 export default function ManageEmployeesPage() {
@@ -80,6 +82,7 @@ export default function ManageEmployeesPage() {
       request_type: emp.request_type || 'holiday',
       initial_income: String(emp.initial_income || ''),
       initial_income_year: String(emp.initial_income_year || new Date().getFullYear()),
+      hire_date: emp.hire_date ? emp.hire_date.substring(0, 10) : '',
     });
     setIsEditing(true);
   };
@@ -105,6 +108,7 @@ export default function ManageEmployeesPage() {
         request_type: formState.request_type,
         initial_income: formState.initial_income ? Number(formState.initial_income) : null,
         initial_income_year: formState.initial_income_year ? Number(formState.initial_income_year) : null,
+        hire_date: formState.hire_date || null,
         password: formState.password || undefined,
     };
 
@@ -182,6 +186,10 @@ export default function ManageEmployeesPage() {
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">時給 (円)</label>
               <input type="number" name="hourly_wage" value={formState.hourly_wage} onChange={handleInputChange} className="mt-1 w-full form-input" required />
+            </div>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">入社日</label>
+              <input type="date" name="hire_date" value={formState.hire_date} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">パスワード</label>

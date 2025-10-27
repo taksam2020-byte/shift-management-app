@@ -4,8 +4,13 @@ import { query } from '@/lib/db.mjs';
 // GET all company holidays
 export async function GET() {
   try {
-    const { rows: holidays } = await query('SELECT * FROM company_holidays ORDER BY date');
-    return NextResponse.json(holidays);
+    const { rows: holidays } = await query('SELECT date, note FROM company_holidays ORDER BY date');
+    const formattedHolidays = holidays.map((holiday: { date: string; note: string }) => ({
+      date: holiday.date,
+      name: holiday.note,
+      type: 'company_holiday'
+    }));
+    return NextResponse.json(formattedHolidays);
   } catch (error) {
     console.error('Failed to fetch company holidays:', error);
     return NextResponse.json({ error: 'Failed to fetch company holidays' }, { status: 500 });
