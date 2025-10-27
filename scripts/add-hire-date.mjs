@@ -4,8 +4,8 @@ const { Pool } = pkg;
 async function addHireDateColumn() {
   const connectionString = process.env.POSTGRES_URL;
   if (!connectionString) {
-    console.error('FATAL: POSTGRES_URL environment variable is not set.');
-    process.exit(1);
+    console.log('INFO: POSTGRES_URL not set, skipping migration.');
+    process.exit(0);
   }
 
   const pool = new Pool({
