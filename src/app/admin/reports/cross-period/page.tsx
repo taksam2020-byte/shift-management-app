@@ -150,7 +150,7 @@ export default function CrossPeriodReportPage() {
                   return (
                     <th key={month} className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{`${year}年 ${monthNum}月度`}</th>
                   )
-                })}}
+                })}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
               </tr>
             </thead>
