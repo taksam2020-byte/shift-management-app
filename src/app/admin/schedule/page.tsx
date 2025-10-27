@@ -387,7 +387,7 @@ export default function SchedulePage() {
         </div>
         <div className="flex gap-4 mb-4">
           <button onClick={handleGenerateSchedule} className="w-full py-2 px-4 bg-green-500 text-white font-bold rounded hover:bg-green-600 disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
-          <button onClick={handleSave} className="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={isLoading}>このスケジュールを保存する</button>
+          <button onClick={() => handleSave()} className="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={isLoading}>このスケジュールを保存する</button>
         </div>
       </div>
       <div className="flex-grow overflow-auto">
