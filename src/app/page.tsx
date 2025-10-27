@@ -20,6 +20,9 @@ export default function HomePage() {
           <Link href="/employee/login" className="block w-full text-center px-6 py-4 text-lg font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 transition-transform transform hover:scale-105">
             従業員ログイン
           </Link>
+          <Link href="/viewer/login" className="block w-full text-center px-6 py-4 text-lg font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 transition-transform transform hover:scale-105">
+            閲覧者ログイン
+          </Link>
         </div>
       </div>
     </main>

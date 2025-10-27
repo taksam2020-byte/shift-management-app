@@ -151,7 +151,9 @@ export default function MySchedulePage() {
             if (!shiftResponse.ok) throw new Error('シフトの取得に失敗しました。');
             const shiftData: Shift[] = await shiftResponse.json();
 
-            const sortedShifts = shiftData.sort((a, b) => {
+            const filteredShifts = shiftData.filter(shift => shift.start_time);
+
+            const sortedShifts = filteredShifts.sort((a, b) => {
                 const aIsSaved = !!a.actual_id;
                 const bIsSaved = !!b.actual_id;
                 if (aIsSaved !== bIsSaved) {
