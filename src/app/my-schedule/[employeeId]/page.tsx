@@ -111,7 +111,7 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
                     <p className="font-bold text-lg">{workDuration > 0 ? workDuration.toFixed(2) : '0.00'} h</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                    <button type="submit" className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 disabled:bg-gray-300" disabled={!canEdit}>
+                    <button type="submit" className={`py-2 px-4 rounded text-white font-semibold ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300`} disabled={!canEdit}>
                         保存
                     </button>
                     {isSaved && <span className="text-xs text-green-700 font-bold">保存済</span>}
