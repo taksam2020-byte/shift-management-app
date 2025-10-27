@@ -60,14 +60,26 @@ export async function POST(request: Request) {
     await client.query('BEGIN');
 
     try {
+        // Get current shifts from DB for comparison
+        const dates = [...new Set(shiftsToSave.map(s => s.date))];
+        const currentShiftsResult = await client.query(
+            `SELECT id, employee_id, date, start_time, end_time FROM shifts WHERE date = ANY($1::date[])`,
+            [dates]
+        );
+        const currentShiftsMap = new Map(currentShiftsResult.rows.map(s => `${s.employee_id}_${s.date.toISOString().substring(0, 10)}`, s));
+
         for (const shift of shiftsToSave) {
             const { employee_id, date, start_time, end_time } = shift;
+            const key = `${employee_id}_${date}`;
+            const existingShift = currentShiftsMap.get(key);
 
-            const existingResult = await client.query(
-                'SELECT id FROM shifts WHERE employee_id = $1 AND date = $2',
-                [employee_id, date]
-            );
-            const existingShift = existingResult.rows[0];
+            const hasChanged = !(existingShift && 
+                                 (existingShift.start_time || '') === (start_time || '') && 
+                                 (existingShift.end_time || '') === (end_time || ''));
+
+            if (!hasChanged) {
+                continue; // Skip if nothing has changed
+            }
 
             if (existingShift) {
                 const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
@@ -76,13 +88,7 @@ export async function POST(request: Request) {
                     if (force) {
                         await client.query('DELETE FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
                     } else {
-                        const oldShiftResult = await client.query('SELECT start_time, end_time FROM shifts WHERE id = $1', [existingShift.id]);
-                        const oldShift = oldShiftResult.rows[0];
-                        const noChange = (oldShift.start_time || '') === (start_time || '') && (oldShift.end_time || '') === (end_time || '');
-                        if (!noChange) {
-                            throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
-                        }
-                        continue;
+                        throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
                     }
                 }
 
