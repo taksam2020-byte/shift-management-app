@@ -10,7 +10,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicRoutes = ['/', '/admin/login', '/employee/login'];
+const publicRoutes = ['/', '/admin/login', '/employee/login', '/viewer/login'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
