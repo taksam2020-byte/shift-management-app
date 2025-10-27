@@ -155,7 +155,7 @@ export default function CrossPeriodReportPage() {
                       </div>
                     </th>
                   )
-                })}}
+                })}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
               </tr>
             </thead>
