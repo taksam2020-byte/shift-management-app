@@ -60,6 +60,7 @@ export default function SchedulePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [schedule, setSchedule] = useState<ScheduleState>({});
+  const [initialSchedule, setInitialSchedule] = useState<ScheduleState>({}); // For diffing
   const [dailyNotes, setDailyNotes] = useState<DailyNoteState>({});
   const [initialDailyNotes, setInitialDailyNotes] = useState<DailyNoteState>({}); // For diffing on save
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -179,6 +180,7 @@ export default function SchedulePage() {
           initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
         });
         setSchedule(initialSchedule);
+        setInitialSchedule(initialSchedule); // Set baseline for diffing
         validateSchedule(initialSchedule, employeesData);
 
         const newNotes: DailyNoteState = {};
@@ -209,79 +211,81 @@ export default function SchedulePage() {
     setDailyNotes(prev => ({ ...prev, [date]: value }));
   };
 
-    const handleSave = async (force = false) => {
-      if (isLoading && !force) return; // Prevent double-clicks unless forcing
-      setIsLoading(true);
-      try {
-        const shiftsToSave: Omit<Shift, 'id'>[] = [];
-        Object.entries(schedule).forEach(([date, dailyShifts]) => {
-          Object.entries(dailyShifts).forEach(([employeeId, time]) => {
-            const [start_time, end_time] = time ? time.split('-').map(t => t.trim()) : ['', ''];
-            shiftsToSave.push({ employee_id: Number(employeeId), date, start_time, end_time });
+      const handleSave = async (force = false) => {
+        if (isLoading && !force) return;
+        setIsLoading(true);
+        try {
+          // --- Diffing for Shifts ---
+          const shiftsToSave: Omit<Shift, 'id'>[] = [];
+          const allDates = new Set([...Object.keys(schedule), ...Object.keys(initialSchedule)]);
+          allDates.forEach(date => {
+            const initialDailyShifts = initialSchedule[date] || {};
+            const currentDailyShifts = schedule[date] || {};
+            const allEmployeeIds = new Set([...Object.keys(initialDailyShifts).map(Number), ...Object.keys(currentDailyShifts).map(Number)]);
+            
+            allEmployeeIds.forEach(employeeId => {
+              const initialTime = initialDailyShifts[employeeId] || '';
+              const currentTime = currentDailyShifts[employeeId] || '';
+    
+              if (initialTime !== currentTime) {
+                const [start_time, end_time] = currentTime ? currentTime.split('-').map(t => t.trim()) : ['', ''];
+                shiftsToSave.push({ employee_id: employeeId, date, start_time, end_time });
+              }
+            });
           });
-        });
-  
-        const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date: date.substring(0, 10), note }));
-  
-        const payload = { shiftsToSave, force };
-  
-        const shiftResponse = await fetch('/api/shifts', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify(payload) 
-        });
-  
-        if (!shiftResponse.ok) {
-          const errorData = await shiftResponse.json();
-          throw new Error(errorData.details || 'シフトの保存に失敗しました。');
-        }
-  
-        const noteSavePromises = notesToSave.map(note => 
-          fetch('/api/notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(note)
-          }).then(res => {
-            if (!res.ok) return res.json().then(err => Promise.reject(err));
-            return res.json();
-          })
-        );
-  
-        await Promise.all(noteSavePromises);
-  
-        alert('シフトと備考を保存しました。');
-        // Re-fetch data to reflect changes
-        const { start, end } = getPayPeriodInterval(currentDate);
-        const fetchStart = new Date(start); fetchStart.setDate(start.getDate() - 7);
-        const fetchEnd = new Date(end); fetchEnd.setDate(end.getDate() + 7);
-        const shiftRes = await fetch(`/api/shifts?startDate=${format(fetchStart, 'yyyy-MM-dd')}&endDate=${format(fetchEnd, 'yyyy-MM-dd')}`);
-        const shiftsData = await shiftRes.json();
-        const initialSchedule: ScheduleState = {};
-        shiftsData.forEach((shift: Shift) => {
-            if (!shift.date) return;
-            const dateStr = shift.date.substring(0, 10);
-            const startTime = shift.start_time?.substring(0, 5);
-            const endTime = shift.end_time?.substring(0, 5);
-            if (!initialSchedule[dateStr]) initialSchedule[dateStr] = {};
-            initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
-        });
-        setSchedule(initialSchedule);
-        validateSchedule(initialSchedule, employees);
-  
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
-        if (errorMessage.includes('実績が入力済みのシフト')) {
-          if (window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？')) {
-            handleSave(true); // Retry with force
+    
+          // --- Diffing for Notes ---
+          const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date: date.substring(0, 10), note }));
+    
+          if (shiftsToSave.length === 0 && notesToSave.length === 0) {
+            alert("変更点がありません。");
+            setIsLoading(false);
+            return;
           }
-        } else {
-          alert(errorMessage);
+    
+          const payload = { shiftsToSave, force };
+    
+          const shiftResponse = await fetch('/api/shifts', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+          });
+    
+          if (!shiftResponse.ok) {
+            const errorData = await shiftResponse.json();
+            throw new Error(errorData.details || 'シフトの保存に失敗しました。');
+          }
+    
+          // Only save notes if shift saving was successful
+          const noteSavePromises = notesToSave.map(note => 
+            fetch('/api/notes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(note)
+            }).then(res => {
+              if (!res.ok) return res.json().then(err => Promise.reject(err));
+              return res.json();
+            })
+          );
+          await Promise.all(noteSavePromises);
+    
+          alert('シフトと備考を保存しました。');
+          // Update baselines after successful save
+          setInitialSchedule(schedule);
+    
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
+          if (errorMessage.includes('実績が入力済みのシフト')) {
+            if (window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？')) {
+              handleSave(true); // Retry with force
+            }
+          } else {
+            alert(errorMessage);
+          }
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-  const handleGenerateSchedule = async () => {
+      };  const handleGenerateSchedule = async () => {
     setIsLoading(true);
     setError(null);
     try {
