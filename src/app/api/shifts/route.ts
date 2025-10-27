@@ -66,7 +66,7 @@ export async function POST(request: Request) {
             `SELECT id, employee_id, date, start_time, end_time FROM shifts WHERE date = ANY($1::date[])`,
             [dates]
         );
-        const currentShiftsMap = new Map(currentShiftsResult.rows.map(s => `${s.employee_id}_${s.date.toISOString().substring(0, 10)}`, s));
+        const currentShiftsMap = new Map(currentShiftsResult.rows.map((s: { id: number; employee_id: number; date: Date; start_time: string; end_time: string; }) => [`${s.employee_id}_${s.date.toISOString().substring(0, 10)}`, s]));
 
         for (const shift of shiftsToSave) {
             const { employee_id, date, start_time, end_time } = shift;
