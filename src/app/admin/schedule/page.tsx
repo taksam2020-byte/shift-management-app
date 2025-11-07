@@ -114,26 +114,16 @@ export default function SchedulePage() {
       setDays(eachDayOfInterval({ start, end }));
 
       try {
-        const [empRes, reqRes, shiftRes, noteRes, holidayRes, annualSummaryRes] = await Promise.all([
+        const [empRes, reqRes, shiftRes, noteRes, holidayRes] = await Promise.all([
           fetch('/api/employees'),
           fetch(`/api/shift-requests?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/shifts?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/notes?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/holidays?startDate=${startDateStr}&endDate=${endDateStr}`),
-          fetch(`/api/reports/annual-summary?year=${currentDate.getFullYear()}`),
         ]);
 
-        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok || !annualSummaryRes.ok) {
-          const errorPayloads = await Promise.all([
-            empRes.ok ? null : empRes.text(),
-            reqRes.ok ? null : reqRes.text(),
-            shiftRes.ok ? null : shiftRes.text(),
-            noteRes.ok ? null : noteRes.text(),
-            holidayRes.ok ? null : holidayRes.text(),
-            annualSummaryRes.ok ? null : annualSummaryRes.text(),
-          ]);
-          console.error("API Error Payloads:", errorPayloads.filter(p => p));
-          throw new Error('データの取得に失敗しました。');
+        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok) {
+          throw new Error('基本データの取得に失敗しました。');
         }
 
         const employeesData: Employee[] = await empRes.json();
@@ -141,11 +131,26 @@ export default function SchedulePage() {
         const shiftsData: Shift[] = await shiftRes.json();
         const notesData: DailyNote[] = await noteRes.json();
         const holidaysData: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
-        const annualSummaryData: { employee_id: number, total_income: number }[] = await annualSummaryRes.json();
 
         setEmployees(employeesData);
         setRequests(requestsData);
         setHolidays(holidaysData);
+
+        // --- Fetch and calculate annual income data ---
+        let calculationYear = currentDate.getFullYear();
+        const decemberTenth = new Date(calculationYear, 11, 10);
+        if (currentDate > decemberTenth) {
+          calculationYear += 1;
+        }
+        
+        const fiscalYearStart = `${calculationYear - 1}-12-11`;
+        const fiscalYearEnd = `${calculationYear}-12-10`;
+
+        const annualSummaryRes = await fetch(`/api/reports/annual-summary?startDate=${fiscalYearStart}&endDate=${fiscalYearEnd}`);
+        if (!annualSummaryRes.ok) {
+            throw new Error('年収サマリーの取得に失敗しました。');
+        }
+        const annualSummaryData: { employee_id: number, total_income: number }[] = await annualSummaryRes.json();
 
         const newAnnualIncomes: AnnualIncomeState = {};
         annualSummaryData.forEach(result => {
@@ -198,12 +203,12 @@ export default function SchedulePage() {
   useEffect(() => {
     if (!employees.length) return;
 
-    const newAnnualIncomes: AnnualIncomeState = { ...annualIncomes };
+    const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
 
     employees.forEach(emp => {
         const annualIncomeLimit = emp.annual_income_limit;
         if (!annualIncomeLimit || emp.hourly_wage <= 0) {
-            newAnnualIncomes[emp.id] = { ...(newAnnualIncomes[emp.id] || { totalIncome: 0 }), remainingDays: null };
+            newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: null };
             return;
         }
 
@@ -211,11 +216,19 @@ export default function SchedulePage() {
         const remainingAnnualBudget = annualIncomeLimit - pastIncome;
         const remainingTotalHours = remainingAnnualBudget > 0 ? remainingAnnualBudget / emp.hourly_wage : 0;
 
-        const currentMonth = currentDate.getMonth(); // 0-11
-        const remainingMonths = 12 - currentMonth;
+        const fiscalYearEndMonth = 11; // December (0-indexed)
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        let remainingMonths = 0;
+        if (currentMonth <= fiscalYearEndMonth) {
+            remainingMonths = fiscalYearEndMonth - currentMonth + 1;
+        } else {
+            remainingMonths = (12 - currentMonth) + fiscalYearEndMonth + 1;
+        }
 
         if (remainingMonths <= 0) {
-            newAnnualIncomes[emp.id] = { ...(newAnnualIncomes[emp.id] || { totalIncome: 0 }), remainingDays: 0 };
+            newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: 0 };
             return;
         }
 
@@ -238,10 +251,10 @@ export default function SchedulePage() {
             remainingDays = remainingThisMonthHours > 0 ? remainingThisMonthHours / dailyHours : 0;
         }
         
-        newAnnualIncomes[emp.id] = { ...(newAnnualIncomes[emp.id] || { totalIncome: 0 }), remainingDays };
+        newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
     });
 
-    setAnnualIncomes(newAnnualIncomes);
+    setAnnualIncomes(newAnnualIncomesState);
 
   }, [schedule, employees, days, annualIncomes, currentDate]);
 

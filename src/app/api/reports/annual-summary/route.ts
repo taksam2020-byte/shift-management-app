@@ -4,17 +4,14 @@ import { query } from '@/lib/db.mjs';
 // GET handler to fetch annual summary for all employees for a given year
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const year = searchParams.get('year'); // e.g., 2024
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
 
-  if (!year) {
-    return NextResponse.json({ error: 'year is required' }, { status: 400 });
+  if (!startDate || !endDate) {
+    return NextResponse.json({ error: 'startDate and endDate are required' }, { status: 400 });
   }
 
   try {
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
-
-    // Sum of earnings from actual_work_hours for the entire year, grouped by employee
     const actualsSql = `
       SELECT 
         s.employee_id,
@@ -31,9 +28,6 @@ export async function GET(request: Request) {
       GROUP BY s.employee_id
     `;
     const actualsResult = await query(actualsSql, [startDate, endDate]);
-
-    // We are not considering initial_income for now to simplify the logic
-    // as it might apply to a different year.
 
     return NextResponse.json(actualsResult.rows);
 
