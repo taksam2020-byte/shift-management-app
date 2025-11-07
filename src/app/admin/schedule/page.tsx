@@ -53,6 +53,18 @@ const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     return duration > 0 ? duration : 0;
 };
 
+// Gets the current fiscal year based on the 12/11 cutoff
+const getCurrentFiscalYear = (date: Date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-11
+  const day = date.getDate();
+  // If the date is in December (11) and after the 10th, it belongs to the next fiscal year.
+  if (month === 11 && day > 10) {
+    return year + 1;
+  }
+  return year;
+};
+
 export default function SchedulePage() {
   // --- State ---
   const [currentDate, setCurrentDate] = useState(getInitialDateForPayPeriod());
@@ -136,14 +148,9 @@ export default function SchedulePage() {
         setRequests(requestsData);
         setHolidays(holidaysData);
 
-        let calculationYear = currentDate.getFullYear();
-        const decemberTenth = new Date(calculationYear, 11, 10);
-        if (currentDate > decemberTenth) {
-          calculationYear += 1;
-        }
-        
-        const fiscalYearStart = `${calculationYear - 1}-12-11`;
-        const fiscalYearEnd = `${calculationYear}-12-10`;
+        const fiscalYear = getCurrentFiscalYear(currentDate);
+        const fiscalYearStart = `${fiscalYear - 1}-12-11`;
+        const fiscalYearEnd = `${fiscalYear}-12-10`;
 
         const annualSummaryRes = await fetch(`/api/reports/annual-summary?startDate=${fiscalYearStart}&endDate=${fiscalYearEnd}`);
         if (!annualSummaryRes.ok) {
@@ -203,12 +210,7 @@ export default function SchedulePage() {
     if (!employees.length) return;
 
     const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
-
-    let calculationYear = currentDate.getFullYear();
-    const decemberTenthCurrent = new Date(calculationYear, 11, 10);
-    if (currentDate > decemberTenthCurrent) {
-      calculationYear += 1;
-    }
+    const fiscalYear = getCurrentFiscalYear(currentDate);
 
     employees.forEach(emp => {
         const annualIncomeLimit = emp.annual_income_limit;
@@ -221,7 +223,7 @@ export default function SchedulePage() {
         const remainingAnnualBudget = annualIncomeLimit - pastIncome;
         const remainingTotalHours = remainingAnnualBudget > 0 ? remainingAnnualBudget / emp.hourly_wage : 0;
 
-        const fiscalYearEndDate = new Date(calculationYear, 11, 10);
+        const fiscalYearEndDate = new Date(fiscalYear, 11, 10);
         const remainingMonths = differenceInMonths(fiscalYearEndDate, currentDate) + 1;
 
         if (remainingMonths <= 0) {
