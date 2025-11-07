@@ -53,12 +53,10 @@ const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     return duration > 0 ? duration : 0;
 };
 
-// Gets the current fiscal year based on the 12/11 cutoff
 const getCurrentFiscalYear = (date: Date) => {
   const year = date.getFullYear();
   const month = date.getMonth(); // 0-11
   const day = date.getDate();
-  // If the date is in December (11) and after the 10th, it belongs to the next fiscal year.
   if (month === 11 && day > 10) {
     return year + 1;
   }
@@ -249,6 +247,27 @@ export default function SchedulePage() {
         if (dailyHours > 0) {
             remainingDays = remainingThisMonthHours > 0 ? remainingThisMonthHours / dailyHours : 0;
         }
+
+        // --- DEBUG LOGS ---
+        if (emp.id === 1) { // Assuming the employee in question has id 1
+            console.log(`--- Calculation for ${emp.name} ---`);
+            console.log(`Current Date: ${format(currentDate, 'yyyy-MM-dd')}`);
+            console.log(`Fiscal Year: ${fiscalYear}`);
+            console.log(`Annual Income Limit: ${annualIncomeLimit}`);
+            console.log(`Past Income: ${pastIncome}`);
+            console.log(`Remaining Annual Budget: ${remainingAnnualBudget}`);
+            console.log(`Hourly Wage: ${emp.hourly_wage}`);
+            console.log(`Remaining Total Hours: ${remainingTotalHours}`);
+            console.log(`Fiscal Year End Date: ${format(fiscalYearEndDate, 'yyyy-MM-dd')}`);
+            console.log(`Remaining Months: ${remainingMonths}`);
+            console.log(`Average Monthly Hours: ${averageMonthlyHours}`);
+            console.log(`This Month Scheduled Hours: ${thisMonthScheduledHours}`);
+            console.log(`Remaining This Month Hours: ${remainingThisMonthHours}`);
+            console.log(`Daily Hours: ${dailyHours}`);
+            console.log(`FINAL remainingDays: ${remainingDays}`);
+            console.log(`------------------------------------`);
+        }
+        // --- END DEBUG LOGS ---
         
         newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
     });
