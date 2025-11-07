@@ -154,7 +154,7 @@ export default function SchedulePage() {
 
         const newAnnualIncomes: AnnualIncomeState = {};
         annualSummaryData.forEach(result => {
-            newAnnualIncomes[result.employee_id] = { totalIncome: parseFloat(result.total_income as any) || 0, remainingDays: null };
+            newAnnualIncomes[result.employee_id] = { totalIncome: parseFloat(result.total_income as string) || 0, remainingDays: null };
         });
         setAnnualIncomes(newAnnualIncomes);
 
@@ -218,7 +218,6 @@ export default function SchedulePage() {
 
         const fiscalYearEndMonth = 11; // December (0-indexed)
         const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
         
         let remainingMonths = 0;
         if (currentMonth <= fiscalYearEndMonth) {
