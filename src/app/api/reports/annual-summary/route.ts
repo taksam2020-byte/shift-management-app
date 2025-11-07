@@ -1,70 +1,41 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
 
-// GET handler to fetch annual summary for an employee
+// GET handler to fetch annual summary for all employees for a given year
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const employeeId = searchParams.get('employeeId');
   const year = searchParams.get('year'); // e.g., 2024
-  const untilMonth = searchParams.get('untilMonth'); // e.g., 3 (calculates up to end of Feb)
 
-  if (!employeeId || !year || !untilMonth) {
-    return NextResponse.json({ error: 'employeeId, year, and untilMonth are required' }, { status: 400 });
+  if (!year) {
+    return NextResponse.json({ error: 'year is required' }, { status: 400 });
   }
 
   try {
-    // 1. Get initial income for the specified year
-    const employeeResult = await query(
-      'SELECT initial_income, initial_income_year FROM employees WHERE id = $1',
-      [employeeId]
-    );
-    const employee = employeeResult.rows[0];
-    let totalIncome = 0;
-    if (employee && employee.initial_income_year === parseInt(year, 10)) {
-      totalIncome += employee.initial_income || 0;
-    }
-
-    // 2. Get sum of earnings from actual_work_hours up to the specified month
     const startDate = `${year}-01-01`;
-    // Calculate the last day of the month BEFORE untilMonth
-    const endDate = new Date(parseInt(year, 10), parseInt(untilMonth, 10) - 1, 0);
-    const endDateStr = endDate.toISOString().substring(0, 10);
+    const endDate = `${year}-12-31`;
 
+    // Sum of earnings from actual_work_hours for the entire year, grouped by employee
     const actualsSql = `
       SELECT 
-        a.actual_start_time, 
-        a.actual_end_time, 
-        a.break_hours, 
-        a.hourly_wage
+        s.employee_id,
+        SUM(a.hourly_wage * (
+          EXTRACT(EPOCH FROM (a.actual_end_time - a.actual_start_time)) / 3600 - COALESCE(a.break_hours, 0)
+        )) as total_income
       FROM actual_work_hours a
       JOIN shifts s ON a.shift_id = s.id
-      WHERE s.employee_id = $1
-        AND s.date >= $2
-        AND s.date <= $3
+      WHERE s.date >= $1
+        AND s.date <= $2
         AND a.hourly_wage IS NOT NULL
+        AND a.actual_start_time IS NOT NULL
+        AND a.actual_end_time IS NOT NULL
+      GROUP BY s.employee_id
     `;
-    const actualsResult = await query(actualsSql, [employeeId, startDate, endDateStr]);
+    const actualsResult = await query(actualsSql, [startDate, endDate]);
 
-    let earnedFromWork = 0;
-    for (const row of actualsResult.rows) {
-        if (!row.actual_start_time || !row.actual_end_time) continue;
+    // We are not considering initial_income for now to simplify the logic
+    // as it might apply to a different year.
 
-        const start = new Date(`1970-01-01T${row.actual_start_time}Z`);
-        const end = new Date(`1970-01-01T${row.actual_end_time}Z`);
-        let durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        if (durationHours < 0) durationHours += 24; // Handle overnight shifts
-
-        const breakHours = row.break_hours || 0;
-        const workHours = durationHours - breakHours;
-
-        if (workHours > 0) {
-            earnedFromWork += workHours * row.hourly_wage;
-        }
-    }
-
-    totalIncome += earnedFromWork;
-
-    return NextResponse.json({ totalIncome });
+    return NextResponse.json(actualsResult.rows);
 
   } catch (error) {
     console.error('Failed to fetch annual summary:', error);
