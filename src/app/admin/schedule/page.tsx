@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, parseISO, differenceInMonths } from 'date-fns';
 import ShiftInput from '@/components/ShiftInput';
 
 // --- Type Definitions ---
@@ -136,7 +136,6 @@ export default function SchedulePage() {
         setRequests(requestsData);
         setHolidays(holidaysData);
 
-        // --- Fetch and calculate annual income data ---
         let calculationYear = currentDate.getFullYear();
         const decemberTenth = new Date(calculationYear, 11, 10);
         if (currentDate > decemberTenth) {
@@ -205,6 +204,12 @@ export default function SchedulePage() {
 
     const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
 
+    let calculationYear = currentDate.getFullYear();
+    const decemberTenthCurrent = new Date(calculationYear, 11, 10);
+    if (currentDate > decemberTenthCurrent) {
+      calculationYear += 1;
+    }
+
     employees.forEach(emp => {
         const annualIncomeLimit = emp.annual_income_limit;
         if (!annualIncomeLimit || emp.hourly_wage <= 0) {
@@ -216,15 +221,8 @@ export default function SchedulePage() {
         const remainingAnnualBudget = annualIncomeLimit - pastIncome;
         const remainingTotalHours = remainingAnnualBudget > 0 ? remainingAnnualBudget / emp.hourly_wage : 0;
 
-        const fiscalYearEndMonth = 11; // December (0-indexed)
-        const currentMonth = currentDate.getMonth();
-        
-        let remainingMonths = 0;
-        if (currentMonth <= fiscalYearEndMonth) {
-            remainingMonths = fiscalYearEndMonth - currentMonth + 1;
-        } else {
-            remainingMonths = (12 - currentMonth) + fiscalYearEndMonth + 1;
-        }
+        const fiscalYearEndDate = new Date(calculationYear, 11, 10);
+        const remainingMonths = differenceInMonths(fiscalYearEndDate, currentDate) + 1;
 
         if (remainingMonths <= 0) {
             newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: 0 };
