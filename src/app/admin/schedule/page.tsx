@@ -154,7 +154,7 @@ export default function SchedulePage() {
 
         const newAnnualIncomes: AnnualIncomeState = {};
         annualSummaryData.forEach(result => {
-            newAnnualIncomes[result.employee_id] = { totalIncome: parseFloat(result.total_income as string) || 0, remainingDays: null };
+            newAnnualIncomes[result.employee_id] = { totalIncome: result.total_income || 0, remainingDays: null };
         });
         setAnnualIncomes(newAnnualIncomes);
 
