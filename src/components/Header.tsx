@@ -82,7 +82,7 @@ export default function Header() {
 
   return (
     <header className="bg-gray-800 text-white shadow-md sticky top-0 z-20">
-      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-3">
             <Image src="/logo.png" alt="Logo" width={52} height={52} className="rounded-md" />
