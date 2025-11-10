@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { format, eachDayOfInterval, getDay, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, getDay, parseISO, addMonths, subMonths, startOfToday } from 'date-fns';
 
 // --- Type Definitions ---
 interface Employee { id: number; name: string; hourly_wage: number; }
@@ -12,16 +12,20 @@ interface DailyNote { date: string; note: string; }
 interface Holiday { date: Date; name: string; }
 
 // --- Helper Functions ---
-const getDefaultDateRange = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const start = new Date(year, month, 11);
-    if (today.getDate() < 11) {
-        start.setMonth(start.getMonth() - 1);
+const getPeriodDates = (date: Date, closingDay: string) => {
+    const d = parseInt(closingDay, 10);
+    let referenceDate = new Date(date);
+    if (referenceDate.getDate() <= d) {
+        referenceDate = subMonths(referenceDate, 1);
     }
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 10);
-    return { startDate: format(start, 'yyyy-MM-dd'), endDate: format(end, 'yyyy-MM-dd') };
+    
+    const periodStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), d + 1);
+    const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, d);
+
+    return { 
+        startDate: format(periodStart, 'yyyy-MM-dd'), 
+        endDate: format(periodEnd, 'yyyy-MM-dd') 
+    };
 };
 
 const parseHours = (startStr: string, endStr: string, breakHours: number = 0): number => {
@@ -36,7 +40,9 @@ const parseHours = (startStr: string, endStr: string, breakHours: number = 0): n
 
 export default function MonthlyReportPage() {
   // --- State ---
-  const [dateRange, setDateRange] = useState(getDefaultDateRange);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [closingDay, setClosingDay] = useState('10');
+  const [dateRange, setDateRange] = useState(() => getPeriodDates(new Date(), '10'));
   const [useSchedule, setUseSchedule] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<ShiftWithActual[]>([]);
@@ -46,6 +52,11 @@ export default function MonthlyReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   // --- Data Fetching ---
+  useEffect(() => {
+    const newDateRange = getPeriodDates(currentMonth, closingDay);
+    setDateRange(newDateRange);
+  }, [currentMonth, closingDay]);
+  
   useEffect(() => {
     const fetchData = async () => {
       if (!dateRange.startDate || !dateRange.endDate) return;
@@ -90,23 +101,33 @@ export default function MonthlyReportPage() {
   }, [dateRange]);
 
   const processedData = useMemo(() => {
-    const data: Record<string, Record<number, { hours: number; time: string }>> = {};
+    const data: Record<string, Record<number, { hours: number; time: string; highlight: boolean }>> = {};
+    const today = startOfToday();
     shifts.forEach(s => {
       const dateStr = s.date.substring(0, 10);
       let hours = 0;
       let time = '';
+      let highlight = false;
 
-      if (s.actual_start_time && s.actual_end_time) {
-        hours = parseHours(s.actual_start_time, s.actual_end_time, s.break_hours || 1);
-        time = `${s.actual_start_time.substring(0, 5)}-${s.actual_end_time.substring(0, 5)}`;
-      } else if (useSchedule && s.start_time && s.end_time) {
+      const hasSchedule = s.start_time && s.end_time;
+      const hasActual = s.actual_start_time && s.actual_end_time;
+      const isPast = parseISO(dateStr) < today;
+
+      if (hasActual) {
+        hours = parseHours(s.actual_start_time!, s.actual_end_time!, s.break_hours || 1);
+        time = `${s.actual_start_time!.substring(0, 5)}-${s.actual_end_time!.substring(0, 5)}`;
+      } else if (useSchedule && hasSchedule) {
         hours = parseHours(s.start_time, s.end_time, 1);
         time = `${s.start_time.substring(0, 5)}-${s.end_time.substring(0, 5)}`;
       }
 
-      if (hours > 0) {
+      if (isPast && hasSchedule && !hasActual) {
+        highlight = true;
+      }
+
+      if (hours > 0 || highlight) {
         if (!data[dateStr]) data[dateStr] = {};
-        data[dateStr][s.employee_id] = { hours, time };
+        data[dateStr][s.employee_id] = { hours, time, highlight };
       }
     });
     return data;
@@ -142,18 +163,27 @@ export default function MonthlyReportPage() {
   return (
     <div className="p-4 flex flex-col">
       {/* Controls */}
-      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4 flex-shrink-0">
-        <div className="w-full sm:w-auto">
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">開始日</label>
-          <input type="date" id="startDate" name="startDate" value={dateRange.startDate} onChange={(e) => setDateRange(p => ({...p, startDate: e.target.value}))} className="mt-1 block w-full form-input" />
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+        <div className="flex items-center gap-4">
+            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">前月</button>
+            <div className="text-center">
+                <h2 className="text-lg font-semibold">{format(currentMonth, 'yyyy年 M月度')}</h2>
+                <p className="text-xs text-gray-500">({dateRange.startDate} ~ {dateRange.endDate})</p>
+            </div>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">次月</button>
         </div>
-        <div className="w-full sm:w-auto">
-          <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">終了日</label>
-          <input type="date" id="endDate" name="endDate" value={dateRange.endDate} onChange={(e) => setDateRange(p => ({...p, endDate: e.target.value}))} className="mt-1 block w-full form-input" />
-        </div>
-        <div className="flex items-center pt-4 sm:pt-0">
-          <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
-          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
+        <div className="flex items-end gap-4">
+            <div className="w-full sm:w-auto">
+                <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
+                <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
+                    <option value="10">10日締め</option>
+                    <option value="20">20日締め</option>
+                </select>
+            </div>
+            <div className="flex items-center pt-4 sm:pt-0">
+                <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+                <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
+            </div>
         </div>
       </div>
 
@@ -183,8 +213,9 @@ export default function MonthlyReportPage() {
                     <td style={{ border: '1px solid #d1d5db', color: holiday ? 'red' : 'inherit' }} className="p-1 text-center">{dailyNotes[dateStr] || holiday?.name || ''}</td>
                     {employees.map(emp => {
                       const cellData = processedData[dateStr]?.[emp.id];
+                      const cellClass = cellData?.highlight ? 'bg-yellow-200' : '';
                       return (
-                        <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-2 text-center text-sm leading-tight">
+                        <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className={`p-2 text-center text-sm leading-tight ${cellClass}`}>
                           {cellData?.time && <div>{cellData.time}</div>}
                           {cellData?.hours > 0 && <div className="text-xs text-gray-500">({cellData.hours.toFixed(2)}h)</div>}
                         </td>
