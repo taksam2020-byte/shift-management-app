@@ -234,7 +234,7 @@ export default function SchedulePage() {
             currentFiscalYearEnd = new Date(currentYear, 11, 10);       // Dec 10 of current year
         } else { // After Dec 10th
             currentFiscalYearStart = new Date(currentYear, 11, 11);     // Dec 11 of current year
-        const currentFiscalYearEnd = new Date(currentYear + 1, 11, 10);   // Dec 10 of next year
+            currentFiscalYearEnd = new Date(currentYear + 1, 11, 10);   // Dec 10 of next year
         }
 
         let remainingMonths = 0;
