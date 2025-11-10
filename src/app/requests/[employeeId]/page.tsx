@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { format, parseISO, startOfToday, addMonths, subMonths, isSameDay } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
@@ -151,6 +152,7 @@ export default function RequestShiftPage() {
         </div>
 
         <DayPicker
+          locale={ja}
           mode="multiple"
           min={0}
           selected={selectedDays}
@@ -160,20 +162,17 @@ export default function RequestShiftPage() {
           disabled={[...blockedDates, { before: startOfToday() }]}
           modifiers={{
             blocked: blockedDates,
-            submitted: existingRequests.map(r => parseISO(r.date)),
           }}
           modifiersClassNames={{
             selected: 'bg-blue-500 text-white',
             today: 'font-bold',
             blocked: 'text-gray-400 cursor-not-allowed',
-            submitted: 'bg-green-200',
           }}
           showOutsideDays
           fixedWeeks
         />
         <div className="text-xs text-gray-500 mt-2 p-2 border-t">
-            <p><span className="inline-block w-3 h-3 bg-green-200 mr-2"></span>提出済みの希望日</p>
-            <p><span className="inline-block w-3 h-3 bg-blue-500 mr-2"></span>今回選択/解除する日</p>
+            <p><span className="inline-block w-3 h-3 bg-blue-500 mr-2"></span>希望日</p>
             <p><span className="inline-block w-3 h-3 bg-gray-200 mr-2"></span>シフト確定/過去の日</p>
         </div>
 

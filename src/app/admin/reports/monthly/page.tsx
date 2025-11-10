@@ -180,7 +180,7 @@ export default function MonthlyReportPage() {
                     <option value="20">20日締め</option>
                 </select>
             </div>
-            <div className="flex items-center pt-4 sm:pt-0">
+            <div className="flex items-center pb-1">
                 <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
                 <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
             </div>
