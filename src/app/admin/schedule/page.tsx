@@ -249,7 +249,7 @@ export default function SchedulePage() {
         }
 
         // --- DEBUG LOGS ---
-        if (emp.id === 1) { // Assuming the employee in question has id 1
+        if (emp.id === 508) { // Assuming the employee in question has id 508
             console.log(`--- Calculation for ${emp.name} ---`);
             console.log(`Current Date: ${format(currentDate, 'yyyy-MM-dd')}`);
             console.log(`Fiscal Year: ${fiscalYear}`);
