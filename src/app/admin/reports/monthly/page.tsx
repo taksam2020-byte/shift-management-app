@@ -163,7 +163,7 @@ export default function MonthlyReportPage() {
   return (
     <div className="p-4 flex flex-col">
       {/* Controls */}
-      <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
+      <div className="bg-white p-2 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
             <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">前月</button>
             <div className="text-center p-2">
