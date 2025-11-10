@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ViewerLoginPage() {
@@ -8,6 +8,11 @@ export default function ViewerLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    passwordRef.current?.focus();
+  }, []);
 
   const handleViewerLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +38,7 @@ export default function ViewerLoginPage() {
               id="password"
               name="password"
               type="password"
+              ref={passwordRef}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

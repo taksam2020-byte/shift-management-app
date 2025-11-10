@@ -1,44 +1,31 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { format, parseISO, startOfToday, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfToday, addMonths, subMonths, isSameDay } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 
 // --- Type Definitions ---
 interface ShiftRequest { id: number; date: string; request_type: 'holiday' | 'work'; }
 interface Employee { id: number; name: string; request_type: 'holiday' | 'work'; }
 interface Shift { date: string; }
 
-// --- Helper ---
-const getPayPeriodInterval = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const start = new Date(year, month, 11);
-    const end = new Date(year, month + 1, 10);
-    return { start, end };
-};
-
-const getInitialDateForNextPayPeriod = () => {
-  const today = new Date();
-  if (today.getDate() > 10) {
-    today.setMonth(today.getMonth() + 1);
-  }
-  return today;
-};
-
-export default function SubmitRequestPage() {
+export default function RequestShiftPage() {
   const params = useParams();
   const employeeId = params.employeeId as string;
 
-  const [requests, setRequests] = useState<ShiftRequest[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [currentDate, setCurrentDate] = useState(getInitialDateForNextPayPeriod());
+  const [existingRequests, setExistingRequests] = useState<ShiftRequest[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDays, setSelectedDays] = useState<Date[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Form state
-  const [date, setDate] = useState('');
 
   useEffect(() => {
     const fetchPageData = async () => {
@@ -54,8 +41,11 @@ export default function SubmitRequestPage() {
           if (!empRes.ok || !reqRes.ok || !shiftRes.ok) throw new Error('データの取得に失敗しました。');
           
           setEmployee(await empRes.json());
-          setRequests(await reqRes.json());
+          const reqData: ShiftRequest[] = await reqRes.json();
+          setExistingRequests(reqData);
           setShifts(await shiftRes.json());
+          // Initialize selected days with existing requests
+          setSelectedDays(reqData.map(r => parseISO(r.date)));
 
         } catch (err) {
           setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
@@ -69,102 +59,132 @@ export default function SubmitRequestPage() {
   }, [employeeId]);
 
   const blockedDates = useMemo(() => {
-    const dateSet = new Set<string>();
-    shifts.forEach(shift => dateSet.add(shift.date.substring(0, 10)));
-    requests.forEach(req => dateSet.add(req.date.substring(0, 10)));
-    return dateSet;
-  }, [shifts, requests]);
+    return shifts.map(s => parseISO(s.date.substring(0, 10)));
+  }, [shifts]);
 
-  const todayStr = format(startOfToday(), 'yyyy-MM-dd');
-  const isDateBlocked = date && (date < todayStr || blockedDates.has(date));
-  let dateError = '';
-  if (date) {
-      if (date < todayStr) {
-          dateError = '過去の日付は選択できません。';
-      } else if (blockedDates.has(date)) {
-          dateError = 'この日は既にシフトまたは希望が登録されています。';
-      }
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!employeeId || !date || isDateBlocked || !employee?.request_type) return;
-    setError(null);
-    try {
-      const response = await fetch('/api/shift-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: parseInt(employeeId), date, request_type: employee.request_type }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '提出に失敗しました。');
-      }
-      setDate('');
-      const reqRes = await fetch(`/api/shift-requests?employeeId=${employeeId}`);
-      setRequests(await reqRes.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '提出中にエラーが発生しました。');
+  const handleDayClick = (day: Date) => {
+    // Ignore past dates and blocked dates
+    if (day < startOfToday() || blockedDates.some(d => isSameDay(d, day))) {
+      return;
+    }
+    
+    const isSelected = selectedDays.some(d => isSameDay(d, day));
+    if (isSelected) {
+      setSelectedDays(selectedDays.filter(d => !isSameDay(d, day)));
+    } else {
+      setSelectedDays([...selectedDays, day]);
     }
   };
 
-  const handleDeleteRequest = async (requestId: number) => {
-    if (!window.confirm('この希望を取り下げますか？')) return;
+  const handleSubmit = async () => {
+    if (!employeeId || !employee) return;
+    setIsSubmitting(true);
+    setError(null);
+
+    const originalDates = new Set(existingRequests.map(r => r.date.substring(0, 10)));
+    const selectedDates = new Set(selectedDays.map(d => format(d, 'yyyy-MM-dd')));
+
+    const toAdd = [...selectedDates].filter(d => !originalDates.has(d));
+    const toDelete = [...originalDates].filter(d => !selectedDates.has(d));
+    
     try {
-        const response = await fetch(`/api/shift-requests?id=${requestId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('取り下げに失敗しました。');
-        const reqRes = await fetch(`/api/shift-requests?employeeId=${employeeId}`);
-        setRequests(await reqRes.json());
-    } catch (err) { alert(err instanceof Error ? err.message : 'エラーが発生しました。'); }
+      const addPromises = toAdd.map(date => 
+        fetch('/api/shift-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: parseInt(employeeId), date, request_type: employee.request_type }),
+        }).then(res => { if (!res.ok) throw new Error('追加に失敗'); })
+      );
+
+      const deletePromises = toDelete.map(date => {
+        const requestId = existingRequests.find(r => r.date.substring(0, 10) === date)?.id;
+        if (!requestId) return Promise.resolve();
+        return fetch(`/api/shift-requests?id=${requestId}`, { method: 'DELETE' })
+          .then(res => { if (!res.ok) throw new Error('削除に失敗'); });
+      });
+
+      await Promise.all([...addPromises, ...deletePromises]);
+
+      // Refetch requests to update the state
+      const reqRes = await fetch(`/api/shift-requests?employeeId=${employeeId}`);
+      const reqData = await reqRes.json();
+      setExistingRequests(reqData);
+      setSelectedDays(reqData.map((r: ShiftRequest) => parseISO(r.date)));
+      alert('希望を更新しました。');
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '更新中にエラーが発生しました。');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const { start, end } = getPayPeriodInterval(currentDate);
-  const filteredRequests = requests.filter(r => r.date >= format(start, 'yyyy-MM-dd') && r.date <= format(end, 'yyyy-MM-dd'));
-
   const pageTitle = employee?.request_type === 'work' ? '希望出勤日の提出' : '希望休の提出';
+  const payPeriod = useMemo(() => {
+    const d = 10; // 10日締め
+    let refDate = new Date(currentMonth);
+    if (refDate.getDate() <= d) {
+        refDate = subMonths(refDate, 1);
+    }
+    const start = new Date(refDate.getFullYear(), refDate.getMonth(), d + 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, d);
+    return { start, end };
+  }, [currentMonth]);
 
   if (isLoading) return <p className="p-4 text-center">読み込み中...</p>;
-  
+  if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
+
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <p className="text-xl mb-6 text-center text-gray-600">{employee?.name} さん</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h2 className="text-xl font-semibold mb-2">{pageTitle}</h2>
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-            <div className="mb-4">
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700">日付</label>
-              <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} min={todayStr} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required />
-              {dateError && <p className="text-red-500 text-sm mt-1">{dateError}</p>}
+    <div className="container mx-auto p-4 max-w-lg">
+      <div className="text-center mb-6">
+        <p className="text-xl text-gray-600">{employee?.name} さん</p>
+        <h1 className="text-2xl font-bold">{pageTitle}</h1>
+      </div>
+
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-4">
+            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-3 py-1 bg-gray-200 rounded-md text-sm">前月</button>
+            <div className="text-center">
+                <h2 className="font-semibold">{format(currentMonth, 'yyyy年 M月')}</h2>
+                <p className="text-xs text-gray-500">({format(payPeriod.start, 'M/d')} ~ {format(payPeriod.end, 'M/d')})</p>
             </div>
-            <button type="submit" disabled={!!isDateBlocked || !date} className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400">提出する</button>
-            {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
-          </form>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-3 py-1 bg-gray-200 rounded-md text-sm">次月</button>
         </div>
-        <div>
-          <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-            <h2 className="text-xl font-semibold">提出済みリスト</h2>
-            <div className="flex items-center gap-1">
-                <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-2 py-1 bg-gray-200 rounded text-sm">前月</button>
-                <span className="text-sm font-semibold w-24 text-center">{format(start, 'M/d')}-{format(end, 'M/d')}</span>
-                <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-2 py-1 bg-gray-200 rounded text-sm">次月</button>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md h-full">
-            <ul className="divide-y divide-gray-200">
-              {filteredRequests.length > 0 ? filteredRequests.map((req) => (
-                <li key={req.id} className="py-3 flex justify-between items-center">
-                  <div>
-                    <p className="text-md font-medium">{format(parseISO(req.date), 'yyyy年 M月 d日')} <span className={`text-xs font-bold px-2 py-1 rounded-full ${req.request_type === 'work' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>{req.request_type === 'work' ? '出勤希望' : '休日希望'}</span></p>
-                  </div>
-                  <button onClick={() => handleDeleteRequest(req.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">取り下げ</button>
-                </li>
-              )) : (
-                <p className="text-gray-500">この期間に提出された希望はありません。</p>
-              )}
-            </ul>
-          </div>
+
+        <div className="flex justify-center">
+          <DayPicker
+            locale={ja}
+            mode="multiple"
+            min={0}
+            selected={selectedDays}
+            onDayClick={handleDayClick}
+            month={currentMonth}
+            onMonthChange={setCurrentMonth}
+            disabled={[...blockedDates, { before: startOfToday() }]}
+            modifiers={{
+              blocked: blockedDates,
+            }}
+            modifiersClassNames={{
+              selected: 'bg-blue-500 text-white',
+              today: 'font-bold',
+              blocked: 'text-gray-400 cursor-not-allowed',
+            }}
+            showOutsideDays
+            fixedWeeks
+          />
         </div>
+        <div className="text-xs text-gray-500 mt-2 p-2 border-t">
+            <p><span className="inline-block w-3 h-3 bg-blue-500 mr-2"></span>希望日</p>
+            <p><span className="inline-block w-3 h-3 bg-gray-200 mr-2"></span>シフト確定/過去の日</p>
+        </div>
+
+        <button 
+          onClick={handleSubmit} 
+          disabled={isSubmitting}
+          className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+        >
+          {isSubmitting ? '更新中...' : 'この内容で希望を提出する'}
+        </button>
       </div>
     </div>
   );

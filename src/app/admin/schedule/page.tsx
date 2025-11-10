@@ -15,7 +15,7 @@ interface Employee {
   annual_income_limit?: number | null;
 }
 interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
-interface Shift { employee_id: number; date: string; start_time: string; end_time: string; }
+interface Shift { id: number; employee_id: number; date: string; start_time: string; end_time: string; }
 interface DailyNote { date: string; note: string; }
 interface Holiday { date: Date; name: string; }
 type ScheduleState = Record<string, Record<number, string>>;
@@ -53,6 +53,16 @@ const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     return duration > 0 ? duration : 0;
 };
 
+const getCurrentFiscalYear = (date: Date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-11
+  const day = date.getDate();
+  if (month === 11 && day > 10) {
+    return year + 1;
+  }
+  return year;
+};
+
 export default function SchedulePage() {
   // --- State ---
   const [currentDate, setCurrentDate] = useState(getInitialDateForPayPeriod());
@@ -60,9 +70,9 @@ export default function SchedulePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [schedule, setSchedule] = useState<ScheduleState>({});
-  const [initialSchedule, setInitialSchedule] = useState<ScheduleState>({}); // For diffing
+  const [initialSchedule, setInitialSchedule] = useState<ScheduleState>({});
   const [dailyNotes, setDailyNotes] = useState<DailyNoteState>({});
-  const [initialDailyNotes, setInitialDailyNotes] = useState<DailyNoteState>({}); // For diffing on save
+  const [initialDailyNotes, setInitialDailyNotes] = useState<DailyNoteState>({});
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationErrorState>({});
   const [annualIncomes, setAnnualIncomes] = useState<AnnualIncomeState>({});
@@ -109,78 +119,71 @@ export default function SchedulePage() {
       setIsLoading(true);
       setError(null);
       const { start, end } = getPayPeriodInterval(currentDate);
-      const fetchStart = new Date(start);
-      fetchStart.setDate(start.getDate() - 7);
-      const fetchEnd = new Date(end);
-      fetchEnd.setDate(end.getDate() + 7);
-      const startDateStr = format(fetchStart, 'yyyy-MM-dd');
-      const endDateStr = format(fetchEnd, 'yyyy-MM-dd');
+      const startDateStr = format(start, 'yyyy-MM-dd');
+      const endDateStr = format(end, 'yyyy-MM-dd');
       setDays(eachDayOfInterval({ start, end }));
+
       try {
-        const [empRes, reqRes, shiftRes, noteRes, holidayRes, companyHolidayRes] = await Promise.all([
+        const [empRes, reqRes, shiftRes, noteRes, holidayRes] = await Promise.all([
           fetch('/api/employees'),
           fetch(`/api/shift-requests?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/shifts?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/notes?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/holidays?startDate=${startDateStr}&endDate=${endDateStr}`),
-          fetch('/api/company-holidays'),
         ]);
-        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok || !companyHolidayRes.ok) throw new Error('データの取得に失敗しました。');
+
+        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok) {
+          throw new Error('基本データの取得に失敗しました。');
+        }
+
         const employeesData: Employee[] = await empRes.json();
         const requestsData: ShiftRequest[] = await reqRes.json();
         const shiftsData: Shift[] = await shiftRes.json();
         const notesData: DailyNote[] = await noteRes.json();
-        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
-        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: { date: string; note: string }) => ({...h, date: parseISO(h.date), name: h.note || '会社休日'}));
-
-        const allHolidays = [...nationalHolidays, ...companyHolidays].sort((a, b) => a.date.getTime() - b.date.getTime());
+        const holidaysData: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
 
         setEmployees(employeesData);
         setRequests(requestsData);
-        setHolidays(allHolidays);
+        setHolidays(holidaysData);
 
-        // --- Fetch and calculate annual income data ---
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        const incomePromises = employeesData.map(emp => 
-            fetch(`/api/reports/annual-summary?employeeId=${emp.id}&year=${year}&untilMonth=${month}`)
-                .then(res => res.json())
-                .then(data => ({ ...data, employeeId: emp.id }))
-        );
-        const incomeResults = await Promise.all(incomePromises);
+        const fiscalYear = getCurrentFiscalYear(currentDate);
+        const fiscalYearStart = `${fiscalYear - 1}-12-11`;
+        const fiscalYearEnd = `${fiscalYear}-12-10`;
+
+        const annualSummaryRes = await fetch(`/api/reports/annual-summary?startDate=${fiscalYearStart}&endDate=${fiscalYearEnd}`);
+        if (!annualSummaryRes.ok) {
+            throw new Error('年収サマリーの取得に失敗しました。');
+        }
+        const annualSummaryData: { employee_id: number, total_income: number }[] = await annualSummaryRes.json();
+
         const newAnnualIncomes: AnnualIncomeState = {};
-        incomeResults.forEach(result => {
-            if (result.employeeId) {
-                newAnnualIncomes[result.employeeId] = { totalIncome: result.totalIncome, remainingDays: null };
-            }
+        employeesData.forEach(emp => {
+            const summary = annualSummaryData.find(s => s.employee_id === emp.id);
+            newAnnualIncomes[emp.id] = { totalIncome: summary?.total_income || 0, remainingDays: null };
         });
         setAnnualIncomes(newAnnualIncomes);
-        // --- End of annual income fetching ---
 
         const initialSchedule: ScheduleState = {};
-        requestsData.forEach(req => {
-            if (req.request_type === 'work') {
-                const employee = employeesData.find(e => e.id === req.employee_id);
-                if (employee) {
-                    const dateStr = req.date.substring(0, 10); // Normalize to YYYY-MM-DD
-                    if (!initialSchedule[dateStr]) initialSchedule[dateStr] = {};
-                    initialSchedule[dateStr][req.employee_id] = employee.default_work_hours || '09:00-17:00';
-                }
-            }
+        const daysInPeriod = eachDayOfInterval({ start, end });
+        daysInPeriod.forEach(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            initialSchedule[dateStr] = {};
+            employeesData.forEach(emp => {
+                initialSchedule[dateStr][emp.id] = '';
+            });
         });
+
         shiftsData.forEach(shift => {
           if (!shift.date) return;
-          const dateStr = shift.date.substring(0, 10); // YYYY-MM-DD形式に整形
-          const startTime = shift.start_time ? shift.start_time.substring(0, 5) : null; // HH:MM形式に整形
-          const endTime = shift.end_time ? shift.end_time.substring(0, 5) : null; // HH:MM形式に整形
-
-          if (!initialSchedule[dateStr]) {
-            initialSchedule[dateStr] = {};
+          const dateStr = shift.date.substring(0, 10);
+          const startTime = shift.start_time ? shift.start_time.substring(0, 5) : null;
+          const endTime = shift.end_time ? shift.end_time.substring(0, 5) : null;
+          if (initialSchedule[dateStr]) {
+            initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
           }
-          initialSchedule[dateStr][shift.employee_id] = startTime && endTime ? `${startTime}-${endTime}` : '';
         });
         setSchedule(initialSchedule);
-        setInitialSchedule(initialSchedule); // Set baseline for diffing
+        setInitialSchedule(initialSchedule);
         validateSchedule(initialSchedule, employeesData);
 
         const newNotes: DailyNoteState = {};
@@ -192,6 +195,7 @@ export default function SchedulePage() {
         setInitialDailyNotes(newNotes);
 
       } catch (err) {
+        console.error(err);
         setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
       } finally {
         setIsLoading(false);
@@ -199,6 +203,47 @@ export default function SchedulePage() {
     };
     fetchData();
   }, [currentDate, validateSchedule]);
+
+  // --- Calculate and update remaining days ---
+  useEffect(() => {
+    if (!employees.length || Object.keys(annualIncomes).length === 0) return;
+
+    const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
+
+    employees.forEach(emp => {
+        const annualIncomeLimit = emp.annual_income_limit;
+        if (!annualIncomeLimit || emp.hourly_wage <= 0) {
+            newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: null };
+            return;
+        }
+
+        // --- SIMPLE CALCULATION LOGIC ---
+        const totalFiscalHours = annualIncomeLimit / emp.hourly_wage;
+        const monthlyBudgetHours = totalFiscalHours / 12;
+
+        let thisMonthScheduledHours = 0;
+        days.forEach(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const shiftTime = schedule[dateStr]?.[emp.id];
+            if (shiftTime) {
+                thisMonthScheduledHours += parseShiftTime(shiftTime, true);
+            }
+        });
+
+        const remainingThisMonthHours = monthlyBudgetHours - thisMonthScheduledHours;
+        const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8;
+        
+        let remainingDays = null;
+        if (dailyHours > 0) {
+            remainingDays = remainingThisMonthHours > 0 ? remainingThisMonthHours / dailyHours : 0;
+        }
+        
+        newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
+    });
+
+    setAnnualIncomes(newAnnualIncomesState);
+
+  }, [schedule, employees, days, currentDate]); // Removed annualIncomes from dependency array
 
   // --- Event Handlers ---
   const handleScheduleChange = (date: string, employeeId: number, value: string) => {
@@ -215,7 +260,6 @@ export default function SchedulePage() {
         if (isLoading && !force) return;
         setIsLoading(true);
         try {
-          // --- Diffing for Shifts ---
           const shiftsToSave: Omit<Shift, 'id'>[] = [];
           const allDates = new Set([...Object.keys(schedule), ...Object.keys(initialSchedule)]);
           allDates.forEach(date => {
@@ -234,7 +278,6 @@ export default function SchedulePage() {
             });
           });
     
-          // --- Diffing for Notes ---
           const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date: date.substring(0, 10), note }));
     
           if (shiftsToSave.length === 0 && notesToSave.length === 0) {
@@ -256,7 +299,6 @@ export default function SchedulePage() {
             throw new Error(errorData.details || 'シフトの保存に失敗しました。');
           }
     
-          // Only save notes if shift saving was successful
           const noteSavePromises = notesToSave.map(note => 
             fetch('/api/notes', {
               method: 'POST',
@@ -270,14 +312,13 @@ export default function SchedulePage() {
           await Promise.all(noteSavePromises);
     
           alert('シフトと備考を保存しました。');
-          // Update baselines after successful save
           setInitialSchedule(schedule);
     
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
           if (errorMessage.includes('実績が入力済みのシフト')) {
             if (window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？')) {
-              handleSave(true); // Retry with force
+              handleSave(true);
             }
           } else {
             alert(errorMessage);
@@ -285,7 +326,9 @@ export default function SchedulePage() {
         } finally {
           setIsLoading(false);
         }
-      };  const handleGenerateSchedule = async () => {
+      };  
+      
+  const handleGenerateSchedule = async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -336,47 +379,6 @@ export default function SchedulePage() {
     });
     return totals;
   }, [schedule, employees, days]);
-
-  // --- Calculate and update remaining days ---
-  useEffect(() => {
-    if (!employees.length || !Object.keys(annualIncomes).length) return;
-
-    const newAnnualIncomes: AnnualIncomeState = { ...annualIncomes };
-
-    employees.forEach(emp => {
-        const annualIncomeLimit = emp.annual_income_limit;
-        if (!annualIncomeLimit) return; // Skip if no limit is set
-
-        const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
-        
-        let thisMonthProjectedIncome = 0;
-        days.forEach(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const shiftTime = schedule[dateStr]?.[emp.id];
-            if (shiftTime) {
-                const hours = parseShiftTime(shiftTime, true);
-                thisMonthProjectedIncome += hours * emp.hourly_wage;
-            }
-        });
-
-        const remainingMonths = 12 - (currentDate.getMonth());
-        const remainingAnnualBudget = annualIncomeLimit - pastIncome;
-        const averageMonthlyBudget = remainingAnnualBudget / remainingMonths;
-        const remainingThisMonthBudget = averageMonthlyBudget - thisMonthProjectedIncome;
-
-        let remainingDays = null;
-        const dailyWage = (emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8) * emp.hourly_wage;
-        if (dailyWage > 0) {
-            remainingDays = remainingThisMonthBudget / dailyWage;
-        }
-        
-        newAnnualIncomes[emp.id] = { ...newAnnualIncomes[emp.id], remainingDays };
-    });
-
-    setAnnualIncomes(newAnnualIncomes);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schedule, employees, days, currentDate]);
 
   if (isLoading) return <p className="p-4 text-center">スケジュールを読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
@@ -458,13 +460,13 @@ export default function SchedulePage() {
                     const remainingDays = annualIncomes[emp.id]?.remainingDays;
                     const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
                     let textColor = 'text-gray-500';
-                    if (remainingDays !== null) {
+                    if (remainingDays != null) {
                         if (remainingDays < 0) textColor = 'text-red-500 font-bold';
                         else if (remainingDays < 5) textColor = 'text-yellow-500';
                     }
                     return (
                         <td key={emp.id} className={`border border-gray-300 p-2 text-center font-semibold ${textColor}`}>
-                            {hasLimit ? (remainingDays !== null ? remainingDays.toFixed(1) : '-') : '-'}
+                            {hasLimit ? (remainingDays != null ? remainingDays.toFixed(1) : '-') : '-'}
                         </td>
                     );
                 })}
