@@ -4,7 +4,16 @@ import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider'; // Import useAuth
 
 interface Employee {
-...
+  id: number;
+  name: string;
+  request_type: 'holiday' | 'work';
+}
+
+export default function EmployeeLoginPage() {
+  const { isLoading: isAuthLoading } = useAuth(); // Get auth loading state
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false); // Use different loading state for form submission
   const [error, setError] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
