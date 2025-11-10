@@ -151,27 +151,28 @@ export default function RequestShiftPage() {
             <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-3 py-1 bg-gray-200 rounded-md text-sm">次月</button>
         </div>
 
-        <DayPicker
-          locale={ja}
-          mode="multiple"
-          min={0}
-          selected={selectedDays}
-          onDayClick={handleDayClick}
-          month={currentMonth}
-          onMonthChange={setCurrentMonth}
-          disabled={[...blockedDates, { before: startOfToday() }]}
-          modifiers={{
-            blocked: blockedDates,
-          }}
-          modifiersClassNames={{
-            selected: 'bg-blue-500 text-white',
-            today: 'font-bold',
-            blocked: 'text-gray-400 cursor-not-allowed',
-          }}
-          showOutsideDays
-          fixedWeeks
-          className="mx-auto" // Add mx-auto here
-        />
+        <div className="flex justify-center">
+          <DayPicker
+            locale={ja}
+            mode="multiple"
+            min={0}
+            selected={selectedDays}
+            onDayClick={handleDayClick}
+            month={currentMonth}
+            onMonthChange={setCurrentMonth}
+            disabled={[...blockedDates, { before: startOfToday() }]}
+            modifiers={{
+              blocked: blockedDates,
+            }}
+            modifiersClassNames={{
+              selected: 'bg-blue-500 text-white',
+              today: 'font-bold',
+              blocked: 'text-gray-400 cursor-not-allowed',
+            }}
+            showOutsideDays
+            fixedWeeks
+          />
+        </div>
         <div className="text-xs text-gray-500 mt-2 p-2 border-t">
             <p><span className="inline-block w-3 h-3 bg-blue-500 mr-2"></span>希望日</p>
             <p><span className="inline-block w-3 h-3 bg-gray-200 mr-2"></span>シフト確定/過去の日</p>
