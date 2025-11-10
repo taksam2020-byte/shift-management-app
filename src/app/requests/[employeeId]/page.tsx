@@ -170,6 +170,7 @@ export default function RequestShiftPage() {
           }}
           showOutsideDays
           fixedWeeks
+          className="mx-auto" // Add mx-auto here
         />
         <div className="text-xs text-gray-500 mt-2 p-2 border-t">
             <p><span className="inline-block w-3 h-3 bg-blue-500 mr-2"></span>希望日</p>

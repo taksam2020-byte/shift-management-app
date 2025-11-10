@@ -172,7 +172,7 @@ export default function MonthlyReportPage() {
             </div>
             <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">次月</button>
         </div>
-        <div className="flex items-end gap-4">
+        <div className="flex items-end gap-4 flex-wrap md:flex-nowrap justify-end">
             <div className="w-full sm:w-auto">
                 <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
                 <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
@@ -180,7 +180,7 @@ export default function MonthlyReportPage() {
                     <option value="20">20日締め</option>
                 </select>
             </div>
-            <div className="flex items-center pb-1">
+            <div className="flex items-center pt-4 sm:pt-0">
                 <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
                 <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
             </div>
