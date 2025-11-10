@@ -157,8 +157,9 @@ export default function SchedulePage() {
         const annualSummaryData: { employee_id: number, total_income: number }[] = await annualSummaryRes.json();
 
         const newAnnualIncomes: AnnualIncomeState = {};
-        annualSummaryData.forEach(result => {
-            newAnnualIncomes[result.employee_id] = { totalIncome: result.total_income || 0, remainingDays: null };
+        employeesData.forEach(emp => {
+            const summary = annualSummaryData.find(s => s.employee_id === emp.id);
+            newAnnualIncomes[emp.id] = { totalIncome: summary?.total_income || 0, remainingDays: null };
         });
         setAnnualIncomes(newAnnualIncomes);
 
@@ -205,7 +206,7 @@ export default function SchedulePage() {
 
   // --- Calculate and update remaining days ---
   useEffect(() => {
-    if (!employees.length) return;
+    if (!employees.length || Object.keys(annualIncomes).length === 0) return;
 
     const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
 
@@ -220,7 +221,6 @@ export default function SchedulePage() {
 
         const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
         
-        // --- FINAL LOGIC ---
         const totalFiscalHours = annualIncomeLimit / emp.hourly_wage;
         const monthlyBudgetHours = totalFiscalHours / 12;
 
@@ -237,12 +237,9 @@ export default function SchedulePage() {
         }
         
         const remainingMonths = 13 - fiscalMonth;
-
-        const shouldHaveWorkedHours = monthlyBudgetHours * (fiscalMonth - 1);
+        
         const actuallyWorkedHours = pastIncome / emp.hourly_wage;
-        
         const remainingTotalHoursForFuture = totalFiscalHours - actuallyWorkedHours;
-        
         const newAverageMonthlyHours = remainingMonths > 0 ? remainingTotalHoursForFuture / remainingMonths : 0;
 
         let thisMonthScheduledHours = 0;
@@ -255,7 +252,7 @@ export default function SchedulePage() {
         });
 
         const remainingThisMonthHours = newAverageMonthlyHours - thisMonthScheduledHours;
-        const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, false) : 8;
+        const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8; // Use withBreak: true
         
         let remainingDays = null;
         if (dailyHours > 0) {
@@ -265,20 +262,18 @@ export default function SchedulePage() {
         if (isDebugTarget) {
             console.log(`--- Calculation for ${emp.name} ---`);
             console.log(`Current Date: ${format(currentDate, 'yyyy-MM-dd')}`);
-            console.log(`Pay Period Month (0-11): ${payPeriodMonth}`);
             console.log(`Fiscal Month (1-12): ${fiscalMonth}`);
             console.log(`Remaining Months: ${remainingMonths}`);
             console.log(`Annual Income Limit: ${annualIncomeLimit}`);
             console.log(`Hourly Wage: ${emp.hourly_wage}`);
             console.log(`Total Fiscal Hours Budget: ${totalFiscalHours}`);
             console.log(`Monthly Budget Hours: ${monthlyBudgetHours}`);
-            console.log(`Should Have Worked Hours (until last month): ${shouldHaveWorkedHours}`);
             console.log(`Actually Worked Hours (from API): ${actuallyWorkedHours}`);
             console.log(`Remaining Total Hours for Future: ${remainingTotalHoursForFuture}`);
             console.log(`New Average Monthly Hours: ${newAverageMonthlyHours}`);
             console.log(`This Month Scheduled Hours: ${thisMonthScheduledHours}`);
             console.log(`Remaining This Month Hours: ${remainingThisMonthHours}`);
-            console.log(`Daily Hours: ${dailyHours}`);
+            console.log(`Daily Hours (with break): ${dailyHours}`);
             console.log(`FINAL remainingDays: ${remainingDays}`);
             console.log(`------------------------------------`);
         }
@@ -288,7 +283,7 @@ export default function SchedulePage() {
 
     setAnnualIncomes(newAnnualIncomesState);
 
-  }, [schedule, employees, days, annualIncomes, currentDate]);
+  }, [schedule, employees, days, currentDate]); // Removed annualIncomes from dependency array
 
   // --- Event Handlers ---
   const handleScheduleChange = (date: string, employeeId: number, value: string) => {
