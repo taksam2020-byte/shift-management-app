@@ -234,12 +234,15 @@ export default function SchedulePage() {
             currentFiscalYearEnd = new Date(currentYear, 11, 10);       // Dec 10 of current year
         } else { // After Dec 10th
             currentFiscalYearStart = new Date(currentYear, 11, 11);     // Dec 11 of current year
-            currentFiscalYearEnd = new Date(currentYear + 1, 11, 10);   // Dec 10 of next year
+        const currentFiscalYearEnd = new Date(currentYear + 1, 11, 10);   // Dec 10 of next year
         }
 
-        // Calculate remaining months from currentDate to currentFiscalYearEnd
-        // Add 1 to include the current month in the count
-        const remainingMonths = differenceInMonths(currentFiscalYearEnd, currentDate) + 1;
+        let remainingMonths = 0;
+        if (currentDate.getTime() === currentFiscalYearEnd.getTime()) {
+            remainingMonths = 0;
+        } else {
+            remainingMonths = differenceInMonths(currentFiscalYearEnd, currentDate);
+        }
 
         if (remainingMonths <= 0) {
             newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: 0 };
