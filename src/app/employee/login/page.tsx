@@ -28,7 +28,94 @@ export default function EmployeeLoginPage() {
   useEffect(() => {
     // Only fetch employees if auth is not loading and user is not authenticated
     if (!isAuthLoading) {
-...
+      const fetchEmployees = async () => {
+        try {
+          const response = await fetch('/api/employees');
+          if (!response.ok) throw new Error('従業員リストの取得に失敗しました。');
+          const data = await response.json();
+          setEmployees(data);
+          if (data.length > 0) {
+            setSelectedEmployeeId(String(data[0].id));
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : '不明なエラー');
+        }
+      };
+      fetchEmployees();
+    }
+  }, [isAuthLoading]);
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+
+    // Always clear old token on new login attempt
+    localStorage.removeItem('authToken');
+
+    if (!selectedEmployeeId || !password) {
+        setError('名前とパスワードの両方を入力してください。');
+        return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+        const response = await fetch('/api/employee/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe: true }), // Always remember
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'ログインに失敗しました。');
+        }
+
+        if (data.token) {
+            localStorage.setItem('authToken', data.token);
+        }
+        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+        // Instead of pushing, we reload the page. AuthProvider will handle the redirect.
+        window.location.href = '/dashboard';
+
+    } catch (err) {
+        setError(err instanceof Error ? err.message : 'ログインエラー');
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+  // Render nothing or a minimal loader while AuthProvider is checking
+  if (isAuthLoading) {
+    return null;
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-gray-50">
+      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-center text-gray-800">従業員ログイン</h1>
+        
+        {employees.length === 0 && !error && <p>従業員リストを読み込み中...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+
+        {employees.length > 0 && (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label htmlFor="employee-select" className="block text-sm font-medium text-gray-700">
+                あなたの名前を選択してください
+              </label>
+              <select
+                id="employee-select"
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              >
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">パスワード</label>
                 <input 
