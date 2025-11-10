@@ -42,7 +42,7 @@ const getInitialDateForPayPeriod = () => {
 
 const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     if (!time || !time.includes('-')) return 0;
-    const [start, end] = time.split('-');
+    const [start, end] = time = time.split('-');
     const startHour = parseInt(start.split(':')[0], 10);
     const startMinute = parseInt(start.split(':')[1] || '0', 10);
     const endHour = parseInt(end.split(':')[0], 10);
@@ -57,7 +57,7 @@ const getCurrentFiscalYear = (date: Date) => {
   const year = date.getFullYear();
   const month = date.getMonth(); // 0-11
   const day = date.getDate();
-  if (month === 11 && day > 10) {
+  if (month === 11 && day > 10) { // If current date is Dec 11 or later, it's next year's fiscal year
     return year + 1;
   }
   return year;
@@ -221,8 +221,25 @@ export default function SchedulePage() {
         const remainingAnnualBudget = annualIncomeLimit - pastIncome;
         const remainingTotalHours = remainingAnnualBudget > 0 ? remainingAnnualBudget / emp.hourly_wage : 0;
 
-        const fiscalYearEndDate = new Date(fiscalYear, 11, 10);
-        const remainingMonths = differenceInMonths(fiscalYearEndDate, currentDate) + 1;
+        // Determine the fiscal year start and end dates based on currentDate
+        let currentFiscalYearStart: Date;
+        let currentFiscalYearEnd: Date;
+
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+        const currentDay = currentDate.getDate();
+
+        if (currentMonth < 11 || (currentMonth === 11 && currentDay <= 10)) { // Before or on Dec 10th
+            currentFiscalYearStart = new Date(currentYear - 1, 11, 11); // Dec 11 of previous year
+            currentFiscalYearEnd = new Date(currentYear, 11, 10);       // Dec 10 of current year
+        } else { // After Dec 10th
+            currentFiscalYearStart = new Date(currentYear, 11, 11);     // Dec 11 of current year
+            currentFiscalYearEnd = new Date(currentYear + 1, 11, 10);   // Dec 10 of next year
+        }
+
+        // Calculate remaining months from currentDate to currentFiscalYearEnd
+        // Add 1 to include the current month in the count
+        const remainingMonths = differenceInMonths(currentFiscalYearEnd, currentDate) + 1;
 
         if (remainingMonths <= 0) {
             newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: 0 };
@@ -249,16 +266,17 @@ export default function SchedulePage() {
         }
 
         // --- DEBUG LOGS ---
-        if (emp.id === 508) { // Assuming the employee in question has id 508
+        if (emp.id === 508) {
             console.log(`--- Calculation for ${emp.name} ---`);
             console.log(`Current Date: ${format(currentDate, 'yyyy-MM-dd')}`);
-            console.log(`Fiscal Year: ${fiscalYear}`);
+            console.log(`Fiscal Year (determined by getCurrentFiscalYear): ${fiscalYear}`);
             console.log(`Annual Income Limit: ${annualIncomeLimit}`);
             console.log(`Past Income: ${pastIncome}`);
             console.log(`Remaining Annual Budget: ${remainingAnnualBudget}`);
             console.log(`Hourly Wage: ${emp.hourly_wage}`);
             console.log(`Remaining Total Hours: ${remainingTotalHours}`);
-            console.log(`Fiscal Year End Date: ${format(fiscalYearEndDate, 'yyyy-MM-dd')}`);
+            console.log(`Current Fiscal Year Start: ${format(currentFiscalYearStart, 'yyyy-MM-dd')}`);
+            console.log(`Current Fiscal Year End: ${format(currentFiscalYearEnd, 'yyyy-MM-dd')}`);
             console.log(`Remaining Months: ${remainingMonths}`);
             console.log(`Average Monthly Hours: ${averageMonthlyHours}`);
             console.log(`This Month Scheduled Hours: ${thisMonthScheduledHours}`);
