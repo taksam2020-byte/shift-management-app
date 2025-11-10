@@ -219,10 +219,11 @@ export default function SchedulePage() {
         }
 
         const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
-        const remainingAnnualBudget = annualIncomeLimit - pastIncome;
-        const remainingTotalHours = remainingAnnualBudget > 0 ? remainingAnnualBudget / emp.hourly_wage : 0;
+        
+        // --- FINAL LOGIC ---
+        const totalFiscalHours = annualIncomeLimit / emp.hourly_wage;
+        const monthlyBudgetHours = totalFiscalHours / 12;
 
-        // --- NEW REMAINING MONTHS LOGIC ---
         let payPeriodMonth = currentDate.getMonth(); // 0-11
         if (currentDate.getDate() <= 10) {
             payPeriodMonth = (payPeriodMonth - 1 + 12) % 12;
@@ -236,9 +237,13 @@ export default function SchedulePage() {
         }
         
         const remainingMonths = 13 - fiscalMonth;
-        // --- END NEW LOGIC ---
 
-        const averageMonthlyHours = remainingMonths > 0 ? remainingTotalHours / remainingMonths : 0;
+        const shouldHaveWorkedHours = monthlyBudgetHours * (fiscalMonth - 1);
+        const actuallyWorkedHours = pastIncome / emp.hourly_wage;
+        
+        const remainingTotalHoursForFuture = totalFiscalHours - actuallyWorkedHours;
+        
+        const newAverageMonthlyHours = remainingMonths > 0 ? remainingTotalHoursForFuture / remainingMonths : 0;
 
         let thisMonthScheduledHours = 0;
         days.forEach(day => {
@@ -249,7 +254,7 @@ export default function SchedulePage() {
             }
         });
 
-        const remainingThisMonthHours = averageMonthlyHours - thisMonthScheduledHours;
+        const remainingThisMonthHours = newAverageMonthlyHours - thisMonthScheduledHours;
         const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, false) : 8;
         
         let remainingDays = null;
@@ -264,11 +269,13 @@ export default function SchedulePage() {
             console.log(`Fiscal Month (1-12): ${fiscalMonth}`);
             console.log(`Remaining Months: ${remainingMonths}`);
             console.log(`Annual Income Limit: ${annualIncomeLimit}`);
-            console.log(`Past Income: ${pastIncome}`);
-            console.log(`Remaining Annual Budget: ${remainingAnnualBudget}`);
             console.log(`Hourly Wage: ${emp.hourly_wage}`);
-            console.log(`Remaining Total Hours: ${remainingTotalHours}`);
-            console.log(`Average Monthly Hours: ${averageMonthlyHours}`);
+            console.log(`Total Fiscal Hours Budget: ${totalFiscalHours}`);
+            console.log(`Monthly Budget Hours: ${monthlyBudgetHours}`);
+            console.log(`Should Have Worked Hours (until last month): ${shouldHaveWorkedHours}`);
+            console.log(`Actually Worked Hours (from API): ${actuallyWorkedHours}`);
+            console.log(`Remaining Total Hours for Future: ${remainingTotalHoursForFuture}`);
+            console.log(`New Average Monthly Hours: ${newAverageMonthlyHours}`);
             console.log(`This Month Scheduled Hours: ${thisMonthScheduledHours}`);
             console.log(`Remaining This Month Hours: ${remainingThisMonthHours}`);
             console.log(`Daily Hours: ${dailyHours}`);
