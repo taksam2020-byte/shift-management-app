@@ -197,10 +197,10 @@ export default function MonthlyReportPage() {
           <table className="min-w-full border-collapse">
             <thead style={{ backgroundColor: '#f9fafb' }} className="sticky top-0 z-10">
               <tr>
-                <th style={{ border: '1px solid #d1d5db' }} className="p-2 w-28 sticky left-0 bg-gray-100">日付</th>
-                <th style={{ border: '1px solid #d1d5db' }} className="p-2 w-24">備考</th>
-                {employees.map((emp) => <th key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-2 whitespace-nowrap">{emp.name}</th>)}
-                <th style={{ border: '1px solid #d1d5db' }} className="p-2 w-24">日別合計</th>
+                <th style={{ border: '1px solid #d1d5db' }} className="p-1 w-28 sticky left-0 bg-gray-100">日付</th>
+                <th style={{ border: '1px solid #d1d5db' }} className="p-1 w-24">備考</th>
+                {employees.map((emp) => <th key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 whitespace-nowrap">{emp.name}</th>)}
+                <th style={{ border: '1px solid #d1d5db' }} className="p-1 w-24">日別合計</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -211,38 +211,38 @@ export default function MonthlyReportPage() {
                 const dailyTotal = employees.reduce((acc, emp) => acc + (processedData[dateStr]?.[emp.id]?.hours || 0), 0);
                 return (
                   <tr key={dateStr} className={isWeekend || !!holiday ? 'bg-gray-200' : ''}>
-                    <td style={{ border: '1px solid #d1d5db' }} className={`p-2 whitespace-nowrap text-center w-28 sticky left-0 ${isWeekend || !!holiday ? 'font-semibold text-red-600 bg-gray-200' : 'bg-white'}`}>{format(day, 'M/d')} ({['日', '月', '火', '水', '木', '金', '土'][getDay(day)]})</td>
+                    <td style={{ border: '1px solid #d1d5db' }} className={`p-1 whitespace-nowrap text-center w-28 sticky left-0 ${isWeekend || !!holiday ? 'font-semibold text-red-600 bg-gray-200' : 'bg-white'}`}>{format(day, 'M/d')} ({['日', '月', '火', '水', '木', '金', '土'][getDay(day)]})</td>
                     <td style={{ border: '1px solid #d1d5db', color: holiday ? 'red' : 'inherit' }} className="p-1 text-center">{dailyNotes[dateStr] || holiday?.name || ''}</td>
                     {employees.map(emp => {
                       const cellData = processedData[dateStr]?.[emp.id];
                       const cellClass = cellData?.highlight ? 'bg-yellow-200' : '';
                       return (
-                        <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className={`p-2 text-center text-sm leading-tight ${cellClass}`}>
+                        <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className={`p-1 text-center text-sm leading-tight ${cellClass}`}>
                           {cellData?.time && <div>{cellData.time}</div>}
                           {cellData?.hours > 0 && <div className="text-xs text-gray-500">({cellData.hours.toFixed(2)}h)</div>}
                         </td>
                       );
                     })}
-                    <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-center font-semibold">{dailyTotal > 0 ? dailyTotal.toFixed(2) : ''}</td>
+                    <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center font-semibold">{dailyTotal > 0 ? dailyTotal.toFixed(2) : ''}</td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 10, backgroundColor: '#f9fafb' }} className="font-bold">
               <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-right sticky left-0 bg-gray-100" colSpan={2}>合計勤務日数</td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-2 text-center">{employeeTotals[emp.id]?.days || ''}</td>)}
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-center">{grandTotals.days > 0 ? grandTotals.days : ''}</td>
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計勤務日数</td>
+                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{employeeTotals[emp.id]?.days || ''}</td>)}
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{grandTotals.days > 0 ? grandTotals.days : ''}</td>
               </tr>
               <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-right sticky left-0 bg-gray-100" colSpan={2}>合計勤務時間</td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-2 text-center">{employeeTotals[emp.id]?.hours.toFixed(2) || ''}</td>)}
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-center">{grandTotals.hours > 0 ? grandTotals.hours.toFixed(2) : ''}</td>
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計勤務時間</td>
+                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{employeeTotals[emp.id]?.hours.toFixed(2) || ''}</td>)}
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{grandTotals.hours > 0 ? grandTotals.hours.toFixed(2) : ''}</td>
               </tr>
               <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-right sticky left-0 bg-gray-100" colSpan={2}>合計概算給与</td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '19x solid #d1d5db' }} className="p-2 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
-                <td style={{ border: '1px solid #d1d5db' }} className="p-2 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計概算給与</td>
+                {employees.map(emp => <td key={emp.id} style={{ border: '19x solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
