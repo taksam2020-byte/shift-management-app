@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, parseISO, differenceInMonths } from 'date-fns';
+import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, parseISO } from 'date-fns';
 import ShiftInput from '@/components/ShiftInput';
 
 // --- Type Definitions ---
@@ -211,36 +211,15 @@ export default function SchedulePage() {
     const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
 
     employees.forEach(emp => {
-        const isDebugTarget = emp.id === 508;
-
         const annualIncomeLimit = emp.annual_income_limit;
         if (!annualIncomeLimit || emp.hourly_wage <= 0) {
             newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays: null };
             return;
         }
 
-        const pastIncome = annualIncomes[emp.id]?.totalIncome || 0;
-        
+        // --- SIMPLE CALCULATION LOGIC ---
         const totalFiscalHours = annualIncomeLimit / emp.hourly_wage;
         const monthlyBudgetHours = totalFiscalHours / 12;
-
-        let payPeriodMonth = currentDate.getMonth(); // 0-11
-        if (currentDate.getDate() <= 10) {
-            payPeriodMonth = (payPeriodMonth - 1 + 12) % 12;
-        }
-
-        let fiscalMonth;
-        if (payPeriodMonth === 11) { // December is the 1st fiscal month
-            fiscalMonth = 1;
-        } else {
-            fiscalMonth = payPeriodMonth + 2;
-        }
-        
-        const remainingMonths = 13 - fiscalMonth;
-        
-        const actuallyWorkedHours = pastIncome / emp.hourly_wage;
-        const remainingTotalHoursForFuture = totalFiscalHours - actuallyWorkedHours;
-        const newAverageMonthlyHours = remainingMonths > 0 ? remainingTotalHoursForFuture / remainingMonths : 0;
 
         let thisMonthScheduledHours = 0;
         days.forEach(day => {
@@ -251,31 +230,12 @@ export default function SchedulePage() {
             }
         });
 
-        const remainingThisMonthHours = newAverageMonthlyHours - thisMonthScheduledHours;
-        const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8; // Use withBreak: true
+        const remainingThisMonthHours = monthlyBudgetHours - thisMonthScheduledHours;
+        const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8;
         
         let remainingDays = null;
         if (dailyHours > 0) {
             remainingDays = remainingThisMonthHours > 0 ? remainingThisMonthHours / dailyHours : 0;
-        }
-        
-        if (isDebugTarget) {
-            console.log(`--- Calculation for ${emp.name} ---`);
-            console.log(`Current Date: ${format(currentDate, 'yyyy-MM-dd')}`);
-            console.log(`Fiscal Month (1-12): ${fiscalMonth}`);
-            console.log(`Remaining Months: ${remainingMonths}`);
-            console.log(`Annual Income Limit: ${annualIncomeLimit}`);
-            console.log(`Hourly Wage: ${emp.hourly_wage}`);
-            console.log(`Total Fiscal Hours Budget: ${totalFiscalHours}`);
-            console.log(`Monthly Budget Hours: ${monthlyBudgetHours}`);
-            console.log(`Actually Worked Hours (from API): ${actuallyWorkedHours}`);
-            console.log(`Remaining Total Hours for Future: ${remainingTotalHoursForFuture}`);
-            console.log(`New Average Monthly Hours: ${newAverageMonthlyHours}`);
-            console.log(`This Month Scheduled Hours: ${thisMonthScheduledHours}`);
-            console.log(`Remaining This Month Hours: ${remainingThisMonthHours}`);
-            console.log(`Daily Hours (with break): ${dailyHours}`);
-            console.log(`FINAL remainingDays: ${remainingDays}`);
-            console.log(`------------------------------------`);
         }
         
         newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
