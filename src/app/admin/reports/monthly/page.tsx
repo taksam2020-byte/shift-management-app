@@ -173,18 +173,19 @@ export default function MonthlyReportPage() {
             <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">次月</button>
         </div>
 
-        <div className="flex-grow"></div>
-
-        <div className="w-full sm:w-auto">
-          <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
-          <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
-            <option value="10">10日締め</option>
-            <option value="20">20日締め</option>
-          </select>
-        </div>
-        <div className="flex items-center pt-4 sm:pt-0">
-          <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
+        {/* 締め日選択とチェックボックスのグループ */}
+        <div className="flex items-end gap-4 ml-8"> {/* ml-8 for spacing from month controls */}
+            <div className="w-full sm:w-auto">
+              <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
+              <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
+                <option value="10">10日締め</option>
+                <option value="20">20日締め</option>
+              </select>
+            </div>
+            <div className="flex items-center pt-4 sm:pt-0">
+              <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+              <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
+            </div>
         </div>
       </div>
 
