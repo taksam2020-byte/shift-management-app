@@ -42,7 +42,7 @@ const getInitialDateForPayPeriod = () => {
 
 const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     if (!time || !time.includes('-')) return 0;
-    const [start, end] = time = time.split('-');
+    const [start, end] = time.split('-');
     const startHour = parseInt(start.split(':')[0], 10);
     const startMinute = parseInt(start.split(':')[1] || '0', 10);
     const endHour = parseInt(end.split(':')[0], 10);
