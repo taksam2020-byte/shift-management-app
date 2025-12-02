@@ -22,6 +22,7 @@ export default function RequestShiftPage() {
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDays, setSelectedDays] = useState<Date[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +46,8 @@ export default function RequestShiftPage() {
           setExistingRequests(reqData);
           setShifts(await shiftRes.json());
           // Initialize selected days with existing requests
-          setSelectedDays(reqData.map(r => parseISO(r.date)));
+          const initialDays = reqData.map(r => parseISO(r.date));
+          setSelectedDays(initialDays);
 
         } catch (err) {
           setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
@@ -57,6 +59,33 @@ export default function RequestShiftPage() {
       fetchPageData();
     }
   }, [employeeId]);
+
+  // Warn on unsaved changes
+  useEffect(() => {
+    const originalDatesStr = JSON.stringify(existingRequests.map(r => r.date).sort());
+    const selectedDatesStr = JSON.stringify(selectedDays.map(d => format(d, 'yyyy-MM-dd')).sort());
+    
+    if (originalDatesStr !== selectedDatesStr) {
+      setIsDirty(true);
+    } else {
+      setIsDirty(false);
+    }
+  }, [selectedDays, existingRequests]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for legacy browsers
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
 
   const blockedDates = useMemo(() => {
     return shifts.map(s => parseISO(s.date.substring(0, 10)));
@@ -110,6 +139,7 @@ export default function RequestShiftPage() {
       const reqData = await reqRes.json();
       setExistingRequests(reqData);
       setSelectedDays(reqData.map((r: ShiftRequest) => parseISO(r.date)));
+      setIsDirty(false); // Reset dirty state after successful submission
       alert('希望を更新しました。');
 
     } catch (err) {
