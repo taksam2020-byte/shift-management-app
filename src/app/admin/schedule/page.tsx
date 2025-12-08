@@ -356,7 +356,7 @@ export default function SchedulePage() {
         }
         const generatedSchedule = await response.json();
         
-        const newSchedule: ScheduleState = { ...schedule };
+        const newSchedule: ScheduleState = JSON.parse(JSON.stringify(schedule));
         Object.entries(generatedSchedule).forEach(([date, shifts]) => {
             if (!newSchedule[date]) newSchedule[date] = {};
             Object.entries(shifts as Record<string, string>).forEach(([empId, time]) => {
