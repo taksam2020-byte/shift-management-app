@@ -20,7 +20,6 @@ export async function GET(request: Request) {
     let sql = '';
     let params: (string | number)[] = [];
 
-    // Use >= and <= for maximum compatibility with date filtering.
     if (startDate && endDate && employeeId) {
       sql = baseSql + ' WHERE s.date >= $1::date AND s.date <= $2::date AND s.employee_id = $3 ORDER BY s.date, s.start_time';
       params = [startDate, endDate, employeeId];
@@ -45,7 +44,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST handler - remains unchanged
+// POST handler - Rewritten for simplicity and robustness using UPSERT
 export async function POST(request: Request) {
   const pool = getDb();
   const client = await pool.connect();
@@ -60,44 +59,41 @@ export async function POST(request: Request) {
     await client.query('BEGIN');
 
     try {
-        const dates = [...new Set(shiftsToSave.map(s => s.date))];
-        const currentShiftsResult = await client.query(
-            `SELECT id, employee_id, date, start_time, end_time FROM shifts WHERE date = ANY($1::date[])`,
-            [dates]
-        );
-        const currentShifts: { id: number; employee_id: number; date: Date; start_time: string; end_time: string; }[] = currentShiftsResult.rows;
-
         for (const shift of shiftsToSave) {
             const { employee_id, date, start_time, end_time } = shift;
-            const existingShift = currentShifts.find(s => s.employee_id === employee_id && s.date.toISOString().substring(0, 10) === date);
-
-            const hasChanged = !existingShift || 
-                               (existingShift.start_time || '') !== (start_time || '') || 
-                               (existingShift.end_time || '') !== (end_time || '');
-
-            if (!hasChanged) {
-                continue;
-            }
-
-            if (existingShift) {
-                const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
-                if (actualsResult.rows.length > 0) {
-                    if (force) {
-                        await client.query('DELETE FROM actual_work_hours WHERE shift_id = $1', [existingShift.id]);
-                    } else {
-                        throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は変更/削除できません。`);
+            
+            // If start_time or end_time is empty, it's a delete request.
+            if (!start_time || !end_time) {
+                // Find the shift id to delete actuals first.
+                const shiftResult = await client.query('SELECT id FROM shifts WHERE employee_id = $1 AND date = $2', [employee_id, date]);
+                if (shiftResult.rows.length > 0) {
+                    const shiftId = shiftResult.rows[0].id;
+                    // Check for actuals and handle them
+                    const actualsResult = await client.query('SELECT id FROM actual_work_hours WHERE shift_id = $1', [shiftId]);
+                    if (actualsResult.rows.length > 0) {
+                        if (force) {
+                            await client.query('DELETE FROM actual_work_hours WHERE shift_id = $1', [shiftId]);
+                        } else {
+                            // Instead of throwing an error that rolls back everything, we can collect warnings.
+                            // For simplicity, we'll throw for now. A more advanced implementation could return warnings.
+                            throw new Error(`実績が入力済みのシフト(従業員ID: ${employee_id}, 日付: ${date})は削除できません。`);
+                        }
                     }
+                    // Finally, delete the shift itself.
+                    await client.query('DELETE FROM shifts WHERE id = $1', [shiftId]);
                 }
-
-                if (!start_time || !end_time) {
-                    await client.query('DELETE FROM shifts WHERE id = $1', [existingShift.id]);
-                } else {
-                    await client.query('UPDATE shifts SET start_time = $1, end_time = $2 WHERE id = $3', [start_time, end_time, existingShift.id]);
-                }
-            } else if (start_time && end_time) {
-                await client.query('INSERT INTO shifts (employee_id, date, start_time, end_time) VALUES ($1, $2, $3, $4)', [employee_id, date, start_time, end_time]);
+            } else {
+                // Use UPSERT (INSERT ... ON CONFLICT DO UPDATE)
+                const upsertSql = `
+                    INSERT INTO shifts (employee_id, date, start_time, end_time)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (employee_id, date)
+                    DO UPDATE SET start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time;
+                `;
+                await client.query(upsertSql, [employee_id, date, start_time, end_time]);
             }
         }
+        
         await client.query('COMMIT');
         return NextResponse.json({ message: 'Shifts saved successfully' }, { status: 200 });
     } catch (innerError) {
