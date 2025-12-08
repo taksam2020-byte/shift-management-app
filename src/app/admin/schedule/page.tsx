@@ -280,7 +280,9 @@ export default function SchedulePage() {
             });
           });
     
-          const notesToSave = Object.entries(dailyNotes).map(([date, note]) => ({ date: date.substring(0, 10), note }));
+          const notesToSave = Object.entries(dailyNotes)
+            .filter(([date, note]) => note !== (initialDailyNotes[date] || ''))
+            .map(([date, note]) => ({ date: date.substring(0, 10), note }));
     
           if (shiftsToSave.length === 0 && notesToSave.length === 0) {
             alert("変更点がありません。");
@@ -290,31 +292,36 @@ export default function SchedulePage() {
     
           const payload = { shiftsToSave, force };
     
-          const shiftResponse = await fetch('/api/shifts', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(payload) 
-          });
-    
-          if (!shiftResponse.ok) {
-            const errorData = await shiftResponse.json();
-            throw new Error(errorData.details || 'シフトの保存に失敗しました。');
+          if (shiftsToSave.length > 0) {
+            const shiftResponse = await fetch('/api/shifts', { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify(payload) 
+            });
+      
+            if (!shiftResponse.ok) {
+              const errorData = await shiftResponse.json();
+              throw new Error(errorData.details || 'シフトの保存に失敗しました。');
+            }
           }
-    
-          const noteSavePromises = notesToSave.map(note => 
-            fetch('/api/notes', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(note)
-            }).then(res => {
-              if (!res.ok) return res.json().then(err => Promise.reject(err));
-              return res.json();
-            })
-          );
-          await Promise.all(noteSavePromises);
+
+          if (notesToSave.length > 0) {
+            const noteSavePromises = notesToSave.map(note => 
+              fetch('/api/notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(note)
+              }).then(res => {
+                if (!res.ok) return res.json().then(err => Promise.reject(err));
+                return res.json();
+              })
+            );
+            await Promise.all(noteSavePromises);
+          }
     
           alert('シフトと備考を保存しました。');
           setInitialSchedule(schedule);
+          setInitialDailyNotes(dailyNotes);
     
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
