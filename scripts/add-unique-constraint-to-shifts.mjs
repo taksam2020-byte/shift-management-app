@@ -1,4 +1,4 @@
-import { getDb } from '../lib/db.mjs';
+import { getDb } from '@/lib/db.mjs';
 
 async function addUniqueConstraint() {
   const pool = getDb();
