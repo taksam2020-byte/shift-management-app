@@ -124,15 +124,16 @@ export default function SchedulePage() {
       setDays(eachDayOfInterval({ start, end }));
 
       try {
-        const [empRes, reqRes, shiftRes, noteRes, holidayRes] = await Promise.all([
+        const [empRes, reqRes, shiftRes, noteRes, holidayRes, companyHolidayRes] = await Promise.all([
           fetch('/api/employees'),
           fetch(`/api/shift-requests?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/shifts?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/notes?startDate=${startDateStr}&endDate=${endDateStr}`),
           fetch(`/api/holidays?startDate=${startDateStr}&endDate=${endDateStr}`),
+          fetch('/api/company-holidays'),
         ]);
 
-        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok) {
+        if (!empRes.ok || !reqRes.ok || !shiftRes.ok || !noteRes.ok || !holidayRes.ok || !companyHolidayRes.ok) {
           throw new Error('基本データの取得に失敗しました。');
         }
 
@@ -140,11 +141,12 @@ export default function SchedulePage() {
         const requestsData: ShiftRequest[] = await reqRes.json();
         const shiftsData: Shift[] = await shiftRes.json();
         const notesData: DailyNote[] = await noteRes.json();
-        const holidaysData: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
+        const nationalHolidays: Holiday[] = (await holidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
+        const companyHolidays: Holiday[] = (await companyHolidayRes.json()).map((h: { date: string; name: string }) => ({...h, date: parseISO(h.date)}));
 
         setEmployees(employeesData);
         setRequests(requestsData);
-        setHolidays(holidaysData);
+        setHolidays([...nationalHolidays, ...companyHolidays]);
 
         const fiscalYear = getCurrentFiscalYear(currentDate);
         const fiscalYearStart = `${fiscalYear - 1}-12-11`;
