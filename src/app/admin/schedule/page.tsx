@@ -237,7 +237,7 @@ export default function SchedulePage() {
         
         let remainingDays = null;
         if (dailyHours > 0) {
-            remainingDays = remainingThisMonthHours > 0 ? remainingThisMonthHours / dailyHours : 0;
+            remainingDays = remainingThisMonthHours / dailyHours;
         }
         
         newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
