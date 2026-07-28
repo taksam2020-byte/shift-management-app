@@ -253,6 +253,30 @@ export default function MySchedulePage() {
       return eachDayOfInterval({ start, end });
   }, [currentDate]);
 
+  const renderedItems = useMemo(() => {
+      const items = days.map(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const shift = shifts.find(s => s.date.substring(0, 10) === dateStr);
+          const hasShift = shift && shift.start_time;
+          return { day, dateStr, shift, hasShift };
+      });
+
+      if (loggedInUser?.isAdmin) {
+          return items;
+      }
+
+      const employeeItems = items.filter(item => item.hasShift);
+      employeeItems.sort((a, b) => {
+          const aSaved = !!a.shift?.actual_id;
+          const bSaved = !!b.shift?.actual_id;
+          if (aSaved === bSaved) {
+              return a.day.getTime() - b.day.getTime();
+          }
+          return aSaved ? 1 : -1;
+      });
+      return employeeItems;
+  }, [days, shifts, loggedInUser]);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('loggedInUser');
     if (storedUser) {
@@ -519,12 +543,8 @@ export default function MySchedulePage() {
       </div>
 
       <ul className="space-y-4">
-        {days.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const shift = shifts.find(s => s.date.substring(0, 10) === dateStr);
-            const hasShift = shift && shift.start_time;
-
-            if (hasShift) {
+        {renderedItems.map(({ day, dateStr, shift, hasShift }) => {
+            if (hasShift && shift) {
                 return (
                     <ShiftRow 
                         key={shift.id} 
