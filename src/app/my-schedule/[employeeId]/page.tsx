@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-import { useParams } from 'next/navigation';
-import { format, parseISO, isPast, getDay, addMonths, subMonths } from 'date-fns';
+import { useState, useEffect, FormEvent, useMemo, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { format, parseISO, isPast, getDay, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
 import ActualsInput from '@/components/ActualsInput';
+import Link from 'next/link';
 
 // --- Type Definitions ---
 interface Shift {
@@ -32,21 +33,23 @@ interface Employee {
   initial_income_year?: number | null;
 }
 
+interface User {
+  id: number;
+  name: string;
+  isAdmin: boolean;
+}
+
 // --- Helper ---
 const getPayPeriodInterval = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const start = new Date(year, month, 11);
-    const end = new Date(year, month + 1, 10);
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
     return { start, end };
 };
 
 const getInitialDateForPayPeriod = () => {
-  const today = new Date();
-  if (today.getDate() <= 10) {
-    today.setMonth(today.getMonth() - 1);
-  }
-  return today;
+  return new Date();
 };
 
 const calculateDuration = (start: string, end: string): number => {
@@ -58,34 +61,56 @@ const calculateDuration = (start: string, end: string): number => {
     return duration > 0 ? duration : 0;
 };
 
-function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, start: string, end: string, breakHours: number) => Promise<void> }) {
-    const [actualStart, setActualStart] = useState(shift.actual_start_time?.substring(0, 5) || shift.start_time?.substring(0, 5) || '');
-    const [actualEnd, setActualEnd] = useState(shift.actual_end_time?.substring(0, 5) || shift.end_time?.substring(0, 5) || '');
-    const [breakHours, setBreakHours] = useState(shift.break_hours ?? 1);
-    
-    const canEdit = isPast(parseISO(shift.date));
+// --- Child Components ---
+function ShiftRow({ 
+    shift, 
+    actuals,
+    onChange,
+    onSave, 
+    isAdmin, 
+    onDelete 
+}: { 
+    shift: Shift, 
+    actuals: { actual_start_time: string; actual_end_time: string; break_hours: number; } | undefined,
+    onChange: (shiftId: number, field: 'actual_start_time' | 'actual_end_time' | 'break_hours', value: string | number) => void,
+    onSave: (shiftId: number) => Promise<void>,
+    isAdmin: boolean,
+    onDelete: (shiftId: number) => Promise<void>
+}) {
+    const actualStart = actuals?.actual_start_time || '';
+    const actualEnd = actuals?.actual_end_time || '';
+    const breakHours = actuals?.break_hours ?? 1;
+
+    const canEdit = isPast(parseISO(shift.date)) || isAdmin; // 管理者は常に編集可能
     const isSaved = !!shift.actual_id;
     const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][getDay(parseISO(shift.date))];
 
     const workDuration = calculateDuration(actualStart, actualEnd) - breakHours;
 
     const handleTimeChange = (part: 'start' | 'end', newTime: string) => {
-        if (part === 'start') {
-            setActualStart(newTime);
-        } else {
-            setActualEnd(newTime);
-        }
+        onChange(shift.id, part === 'start' ? 'actual_start_time' : 'actual_end_time', newTime);
     };
 
     const handleSave = (e: FormEvent) => {
         e.preventDefault();
-        onSave(shift.id, actualStart, actualEnd, breakHours);
+        onSave(shift.id);
     };
 
     return (
         <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
             <div className="flex justify-between items-center w-full mb-3">
-                <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
+                    {isAdmin && (
+                        <button
+                            type="button"
+                            onClick={() => onDelete(shift.id)}
+                            className="py-1 px-2.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-100 transition-colors"
+                        >
+                            シフト予定を削除
+                        </button>
+                    )}
+                </div>
                 <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
             </div>
             <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full">
@@ -101,7 +126,7 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
                         type="number"
                         step="0.25"
                         value={breakHours}
-                        onChange={(e) => setBreakHours(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
                         className="form-input w-20 text-center"
                         disabled={!canEdit}
                     />
@@ -121,25 +146,182 @@ function ShiftRow({ shift, onSave }: { shift: Shift, onSave: (shiftId: number, s
     );
 }
 
+function AddShiftRow({ day, employeeId, onSave }: { day: Date, employeeId: string, onSave: () => Promise<void> }) {
+    const [start, setStart] = useState('09:00');
+    const [end, setEnd] = useState('18:00');
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const response = await fetch('/api/shifts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    shiftsToSave: [{ employee_id: parseInt(employeeId), date: dateStr, start_time: start, end_time: end }],
+                    force: true
+                })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.details || 'シフトの保存に失敗しました。');
+            }
+            setIsEditing(false);
+            await onSave();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : '保存中にエラーが発生しました。');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][getDay(day)];
+
+    return (
+        <li className="p-4 bg-gray-50 rounded-lg shadow-sm border border-dashed border-gray-300">
+            <div className="flex justify-between items-center w-full">
+                <div>
+                    <span className="text-lg font-bold text-gray-400">{format(day, 'M月d日')} ({dayOfWeek})</span>
+                    <span className="ml-3 text-sm text-gray-400 font-normal">予定なし</span>
+                </div>
+                {!isEditing ? (
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="py-1 px-3 bg-blue-50 text-blue-600 border border-blue-200 rounded text-sm font-semibold hover:bg-blue-100 transition-colors"
+                    >
+                        シフト予定を追加
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="time"
+                                value={start}
+                                onChange={(e) => setStart(e.target.value)}
+                                className="form-input text-center py-1 px-2 border rounded"
+                            />
+                            <span className="text-gray-500">-</span>
+                            <input
+                                type="time"
+                                value={end}
+                                onChange={(e) => setEnd(e.target.value)}
+                                className="form-input text-center py-1 px-2 border rounded"
+                            />
+                        </div>
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-semibold transition-colors"
+                        >
+                            {isSaving ? '保存中...' : '保存'}
+                        </button>
+                        <button
+                            onClick={() => setIsEditing(false)}
+                            className="py-1 px-3 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded text-sm font-semibold transition-colors"
+                        >
+                            キャンセル
+                        </button>
+                    </div>
+                )}
+            </div>
+        </li>
+    );
+}
+
+// --- Main Component ---
 export default function MySchedulePage() {
   const params = useParams();
+  const router = useRouter();
   const employeeId = params.employeeId as string;
 
   const [currentDate, setCurrentDate] = useState(getInitialDateForPayPeriod());
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+  const [employeesList, setEmployeesList] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // 一括保存用ステート
+  const [actualsState, setActualsState] = useState<Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }>>({});
+  const [isSavingAll, setIsSavingAll] = useState(false);
+
+  const days = useMemo(() => {
+      const { start, end } = getPayPeriodInterval(currentDate);
+      return eachDayOfInterval({ start, end });
+  }, [currentDate]);
+
   useEffect(() => {
-    const fetchMySchedule = async () => {
-        if (!employeeId) return;
+    const storedUser = localStorage.getItem('loggedInUser');
+    if (storedUser) {
+      setLoggedInUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchEmployeesList = async () => {
+      try {
+        const res = await fetch('/api/employees');
+        if (res.ok) {
+          const data = await res.json();
+          setEmployeesList(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch employees list', err);
+      }
+    };
+    if (loggedInUser?.isAdmin) {
+      fetchEmployeesList();
+    }
+  }, [loggedInUser]);
+
+  const fetchMySchedule = useCallback(async () => {
+        if (!employeeId || employeeId === 'undefined') {
+            const storedUser = localStorage.getItem('loggedInUser');
+            const loggedIn = storedUser ? JSON.parse(storedUser) : null;
+            if (loggedIn?.isAdmin) {
+                setIsLoading(true);
+                try {
+                    const listRes = await fetch('/api/employees');
+                    if (listRes.ok) {
+                        const listData = await listRes.json();
+                        if (listData.length > 0) {
+                            router.replace(`/my-schedule/${listData[0].id}`);
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            setError('無効な従業員IDです。');
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
 
         try {
             const empResponse = await fetch(`/api/employees/${employeeId}`);
-            if (!empResponse.ok) throw new Error('従業員情報の取得に失敗しました。');
+            if (!empResponse.ok) {
+                // 管理者の場合は従業員テーブルにレコードがないため、全従業員リストの先頭の従業員にリダイレクトする
+                const storedUser = localStorage.getItem('loggedInUser');
+                const loggedIn = storedUser ? JSON.parse(storedUser) : null;
+                if (loggedIn?.isAdmin) {
+                    const listRes = await fetch('/api/employees');
+                    if (listRes.ok) {
+                        const listData = await listRes.json();
+                        if (listData.length > 0) {
+                            router.replace(`/my-schedule/${listData[0].id}`);
+                            return;
+                        }
+                    }
+                }
+                throw new Error('従業員情報の取得に失敗しました。');
+            }
             const empData: Employee = await empResponse.json();
             setEmployee(empData);
 
@@ -151,54 +333,149 @@ export default function MySchedulePage() {
             if (!shiftResponse.ok) throw new Error('シフトの取得に失敗しました。');
             const shiftData: Shift[] = await shiftResponse.json();
 
-            const filteredShifts = shiftData.filter(shift => shift.start_time);
-
-            const sortedShifts = filteredShifts.sort((a, b) => {
-                const aIsSaved = !!a.actual_id;
-                const bIsSaved = !!b.actual_id;
-                if (aIsSaved !== bIsSaved) {
-                    return aIsSaved ? 1 : -1;
-                }
-                return new Date(a.date).getTime() - new Date(b.date).getTime();
+            setShifts(shiftData);
+            
+            // 実績の表示用初期データをセット
+            const initialActuals: Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }> = {};
+            shiftData.forEach(s => {
+                initialActuals[s.id] = {
+                    actual_start_time: s.actual_start_time?.substring(0, 5) || s.start_time?.substring(0, 5) || '',
+                    actual_end_time: s.actual_end_time?.substring(0, 5) || s.end_time?.substring(0, 5) || '',
+                    break_hours: s.break_hours ?? 1
+                };
             });
-
-            setShifts(sortedShifts);
+            setActualsState(initialActuals);
 
         } catch (err) {
             setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
         } finally {
             setIsLoading(false);
         }
-    };
+  }, [employeeId, currentDate, router]);
 
-    if(employeeId) fetchMySchedule();
-  }, [employeeId, currentDate]);
+  useEffect(() => {
+    if (employeeId) {
+      fetchMySchedule();
+    }
+  }, [employeeId, currentDate, fetchMySchedule]);
 
-  const handleSaveActuals = async (shiftId: number, actual_start_time: string, actual_end_time: string, break_hours: number) => {
+  const handleActualsChange = (shiftId: number, field: 'actual_start_time' | 'actual_end_time' | 'break_hours', value: string | number) => {
+    setActualsState(prev => ({
+        ...prev,
+        [shiftId]: {
+            ...prev[shiftId],
+            [field]: value
+        }
+    }));
+  };
+
+  const handleSaveActuals = async (shiftId: number) => {
+    const data = actualsState[shiftId];
+    if (!data) return;
     try {
         const response = await fetch('/api/actuals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shift_id: shiftId, actual_start_time, actual_end_time, break_hours }),
+            body: JSON.stringify({ 
+                shift_id: shiftId, 
+                actual_start_time: data.actual_start_time, 
+                actual_end_time: data.actual_end_time, 
+                break_hours: data.break_hours 
+            }),
         });
         if (!response.ok) throw new Error('実績の保存に失敗しました。');
         alert('勤務実績を保存しました。');
-        // Re-fetch data to update saved status and sort order
-        const { start, end } = getPayPeriodInterval(currentDate);
-        const startDateStr = format(start, 'yyyy-MM-dd');
-        const endDateStr = format(end, 'yyyy-MM-dd');
-        const shiftResponse = await fetch(`/api/shifts?employeeId=${employeeId}&startDate=${startDateStr}&endDate=${endDateStr}`);
-        const shiftData: Shift[] = await shiftResponse.json();
-        const sortedShifts = shiftData.sort((a, b) => {
-            const aIsSaved = !!a.actual_id;
-            const bIsSaved = !!b.actual_id;
-            if (aIsSaved !== bIsSaved) { return aIsSaved ? 1 : -1; }
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
-        });
-        setShifts(sortedShifts);
+        await fetchMySchedule();
     } catch (err) {
         alert(err instanceof Error ? err.message : 'エラーが発生しました。');
     }
+  };
+
+  const handleSaveAllActuals = async () => {
+    const actualsToSave: { shift_id: number; actual_start_time: string; actual_end_time: string; break_hours: number; }[] = [];
+    
+    shifts.forEach(s => {
+        if (!s.start_time) return; // シフト予定がない日は対象外
+        const curr = actualsState[s.id];
+        if (!curr) return;
+
+        const isNew = !s.actual_id; // まだ実績が一度も保存されていない日
+        const isChanged = s.actual_id && (
+            curr.actual_start_time !== (s.actual_start_time?.substring(0, 5) || '') ||
+            curr.actual_end_time !== (s.actual_end_time?.substring(0, 5) || '') ||
+            curr.break_hours !== (s.break_hours ?? 1)
+        );
+
+        if (isNew || isChanged) {
+            actualsToSave.push({
+                shift_id: s.id,
+                actual_start_time: curr.actual_start_time,
+                actual_end_time: curr.actual_end_time,
+                break_hours: curr.break_hours
+            });
+        }
+    });
+
+    if (actualsToSave.length === 0) {
+        alert('保存対象の実績（未登録の実績、または変更された実績）はありません。');
+        return;
+    }
+
+    if (!window.confirm(`${actualsToSave.length}件の実績を一括保存（確定）しますか？`)) {
+        return;
+    }
+
+    setIsSavingAll(true);
+    try {
+        const response = await fetch('/api/actuals/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ actualsToSave })
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.details || '実績の一括保存に失敗しました。');
+        }
+        const resData = await response.json();
+        alert(`${resData.count}件の実績を保存・確定しました。`);
+        await fetchMySchedule();
+    } catch (err) {
+        alert(err instanceof Error ? err.message : '一括保存中にエラーが発生しました。');
+    } finally {
+        setIsSavingAll(false);
+    }
+  };
+
+  const handleDeleteShift = async (shiftId: number) => {
+      const shift = shifts.find(s => s.id === shiftId);
+      if (!shift) return;
+
+      const hasActual = !!shift.actual_id;
+      let confirmMsg = 'この日のシフト予定を削除しますか？';
+      if (hasActual) {
+          confirmMsg = 'すでに勤務実績が入力されています。シフト予定と実績の両方を削除しますか？';
+      }
+
+      if (!window.confirm(confirmMsg)) return;
+
+      try {
+          const response = await fetch('/api/shifts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  shiftsToSave: [{ employee_id: parseInt(employeeId), date: shift.date.substring(0, 10), start_time: '', end_time: '' }],
+                  force: true
+              })
+          });
+          if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.details || 'シフトの削除に失敗しました。');
+          }
+          alert('シフト予定を削除しました。');
+          await fetchMySchedule();
+      } catch (err) {
+          alert(err instanceof Error ? err.message : '削除中にエラーが発生しました。');
+      }
   };
 
   if (isLoading) return <p className="p-4 text-center">読み込み中...</p>;
@@ -206,6 +483,33 @@ export default function MySchedulePage() {
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
+      {loggedInUser?.isAdmin && (
+        <div className="bg-blue-50 p-4 rounded-lg mb-6 shadow-sm border border-blue-200 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
+            <select
+              value={employeeId}
+              onChange={(e) => router.push(`/my-schedule/${e.target.value}`)}
+              className="form-select rounded border-gray-300 py-1 px-3 bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+            >
+              {employeesList.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleSaveAllActuals}
+              disabled={isSavingAll || shifts.filter(s => s.start_time).length === 0}
+              className="ml-3 py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-colors disabled:bg-gray-400"
+            >
+              {isSavingAll ? '保存中...' : '実績を一括保存する'}
+            </button>
+          </div>
+          <Link href="/admin/schedule" className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+            ← 管理者画面に戻る
+          </Link>
+        </div>
+      )}
+
       <p className="text-xl mb-6 text-center text-gray-600">{employee?.name} さん</p>
 
       <div className="flex items-center justify-between mb-4">
@@ -215,10 +519,37 @@ export default function MySchedulePage() {
       </div>
 
       <ul className="space-y-4">
-        {shifts.length > 0 ? (
-            shifts.map(shift => <ShiftRow key={shift.id} shift={shift} onSave={handleSaveActuals} />)
-        ) : (
-            <p className="text-center bg-white p-6 rounded-lg shadow-md">この期間のシフトはありません。</p>
+        {days.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const shift = shifts.find(s => s.date.substring(0, 10) === dateStr);
+            const hasShift = shift && shift.start_time;
+
+            if (hasShift) {
+                return (
+                    <ShiftRow 
+                        key={shift.id} 
+                        shift={shift} 
+                        actuals={actualsState[shift.id]}
+                        onChange={handleActualsChange}
+                        onSave={handleSaveActuals} 
+                        isAdmin={!!loggedInUser?.isAdmin}
+                        onDelete={handleDeleteShift}
+                    />
+                );
+            } else if (loggedInUser?.isAdmin) {
+                return (
+                    <AddShiftRow
+                        key={dateStr}
+                        day={day}
+                        employeeId={employeeId}
+                        onSave={fetchMySchedule}
+                    />
+                );
+            }
+            return null;
+        })}
+        {!loggedInUser?.isAdmin && shifts.filter(s => s.start_time).length === 0 && (
+            <p className="text-center bg-white p-6 rounded-lg shadow-md text-gray-500">この期間のシフトはありません。</p>
         )}
       </ul>
     </div>

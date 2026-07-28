@@ -15,6 +15,15 @@ interface Holiday { date: Date; name: string; }
 const getPeriodDates = (date: Date, closingDay: string) => {
     const d = parseInt(closingDay, 10);
     let referenceDate = new Date(date);
+    if (d === 31) {
+        // 末締め
+        const periodStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+        const periodEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
+        return { 
+            startDate: format(periodStart, 'yyyy-MM-dd'), 
+            endDate: format(periodEnd, 'yyyy-MM-dd') 
+        };
+    }
     if (referenceDate.getDate() <= d) {
         referenceDate = subMonths(referenceDate, 1);
     }
@@ -41,8 +50,8 @@ const parseHours = (startStr: string, endStr: string, breakHours: number = 0): n
 export default function MonthlyReportPage() {
   // --- State ---
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [closingDay, setClosingDay] = useState('10');
-  const [dateRange, setDateRange] = useState(() => getPeriodDates(new Date(), '10'));
+  const [closingDay, setClosingDay] = useState('31');
+  const [dateRange, setDateRange] = useState(() => getPeriodDates(new Date(), '31'));
   const [useSchedule, setUseSchedule] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<ShiftWithActual[]>([]);
@@ -178,7 +187,7 @@ export default function MonthlyReportPage() {
             <div className="w-full sm:w-auto">
               <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
               <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
-                <option value="10">10日締め</option>
+                <option value="31">末締め</option>
                 <option value="20">20日締め</option>
               </select>
             </div>

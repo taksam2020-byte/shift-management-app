@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startMonthStr = searchParams.get('startMonth'); // YYYY-MM
   const endMonthStr = searchParams.get('endMonth');   // YYYY-MM
-  const closingDay = parseInt(searchParams.get('closingDay') || '10', 10);
+  const closingDay = parseInt(searchParams.get('closingDay') || '31', 10);
   const useSchedule = searchParams.get('useSchedule') === 'true';
 
   if (!startMonthStr || !endMonthStr) {
@@ -51,10 +51,16 @@ export async function GET(request: Request) {
         const monthLabel = format(monthDate, 'yyyy-MM');
         monthLabels.push(monthLabel);
 
-        const periodEnd = new Date(monthDate.getFullYear(), monthDate.getMonth(), closingDay);
-        const periodStart = new Date(periodEnd);
-        periodStart.setMonth(periodStart.getMonth() - 1);
-        periodStart.setDate(periodStart.getDate() + 1);
+        let periodStart, periodEnd;
+        if (closingDay === 31) {
+            periodStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+            periodEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+        } else {
+            periodEnd = new Date(monthDate.getFullYear(), monthDate.getMonth(), closingDay);
+            periodStart = new Date(periodEnd);
+            periodStart.setMonth(periodStart.getMonth() - 1);
+            periodStart.setDate(periodStart.getDate() + 1);
+        }
 
         const startDate = format(periodStart, 'yyyy-MM-dd');
         const endDate = format(periodEnd, 'yyyy-MM-dd');

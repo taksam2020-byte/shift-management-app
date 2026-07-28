@@ -18,17 +18,13 @@ interface User { id: number; name: string; isAdmin: boolean; isViewer?: boolean;
 const getPayPeriodInterval = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const start = new Date(year, month, 11);
-    const end = new Date(year, month + 1, 10);
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
     return { start, end };
 };
 
 const getInitialDateForPayPeriod = () => {
-  const today = new Date();
-  if (today.getDate() <= 10) {
-    today.setMonth(today.getMonth() - 1);
-  }
-  return today;
+  return new Date();
 };
 
 const parseShiftTime = (time: string): number => {

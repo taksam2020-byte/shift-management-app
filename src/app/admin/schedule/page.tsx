@@ -13,6 +13,8 @@ interface Employee {
   max_weekly_hours?: number | null; 
   max_weekly_days?: number | null; 
   annual_income_limit?: number | null;
+  initial_income?: number | null;
+  initial_income_year?: number | null;
 }
 interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
 interface Shift { id: number; employee_id: number; date: string; start_time: string; end_time: string; }
@@ -27,17 +29,13 @@ type AnnualIncomeState = Record<number, { totalIncome: number; remainingDays: nu
 const getPayPeriodInterval = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const start = new Date(year, month, 11);
-    const end = new Date(year, month + 1, 10);
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
     return { start, end };
 };
 
 const getInitialDateForPayPeriod = () => {
-  const today = new Date();
-  if (today.getDate() <= 10) {
-    today.setMonth(today.getMonth() - 1);
-  }
-  return today;
+  return new Date();
 };
 
 const parseShiftTime = (time: string, withBreak: boolean = false): number => {
@@ -54,13 +52,7 @@ const parseShiftTime = (time: string, withBreak: boolean = false): number => {
 };
 
 const getCurrentFiscalYear = (date: Date) => {
-  const year = date.getFullYear();
-  const month = date.getMonth(); // 0-11
-  const day = date.getDate();
-  if (month === 11 && day > 10) {
-    return year + 1;
-  }
-  return year;
+  return date.getFullYear();
 };
 
 export default function SchedulePage() {
@@ -149,14 +141,19 @@ export default function SchedulePage() {
         setHolidays([...nationalHolidays, ...companyHolidays]);
 
         const fiscalYear = getCurrentFiscalYear(currentDate);
-        const fiscalYearStart = `${fiscalYear - 1}-12-11`;
-        const fiscalYearEnd = `${fiscalYear}-12-10`;
-
-        const annualSummaryRes = await fetch(`/api/reports/annual-summary?startDate=${fiscalYearStart}&endDate=${fiscalYearEnd}`);
-        if (!annualSummaryRes.ok) {
-            throw new Error('年収サマリーの取得に失敗しました。');
+        const targetMonth = start.getMonth() + 1; // 1-12
+        
+        let annualSummaryData: { employee_id: number, total_income: number }[] = [];
+        
+        if (targetMonth > 1) {
+            const pastStart = `${fiscalYear}-01-01`;
+            const pastEnd = format(new Date(start.getTime() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+            const annualSummaryRes = await fetch(`/api/reports/annual-summary?startDate=${pastStart}&endDate=${pastEnd}`);
+            if (!annualSummaryRes.ok) {
+                throw new Error('過去の年収サマリーの取得に失敗しました。');
+            }
+            annualSummaryData = await annualSummaryRes.json();
         }
-        const annualSummaryData: { employee_id: number, total_income: number }[] = await annualSummaryRes.json();
 
         const newAnnualIncomes: AnnualIncomeState = {};
         employeesData.forEach(emp => {
@@ -211,6 +208,9 @@ export default function SchedulePage() {
     if (!employees.length || Object.keys(annualIncomes).length === 0) return;
 
     const newAnnualIncomesState: AnnualIncomeState = { ...annualIncomes };
+    const { start } = getPayPeriodInterval(currentDate);
+    const targetYear = start.getFullYear();
+    const targetMonth = start.getMonth() + 1; // 1-12
 
     employees.forEach(emp => {
         const annualIncomeLimit = emp.annual_income_limit;
@@ -219,9 +219,25 @@ export default function SchedulePage() {
             return;
         }
 
-        // --- SIMPLE CALCULATION LOGIC ---
+        // --- DYNAMIC CALCULATION LOGIC ---
         const totalFiscalHours = annualIncomeLimit / emp.hourly_wage;
-        const monthlyBudgetHours = totalFiscalHours / 12;
+        
+        // 過去実績（今年度1/1〜今月前日）
+        const pastActualIncome = annualIncomes[emp.id]?.totalIncome || 0;
+        // 初期収入（設定年が対象年の場合のみ）
+        const pastInitialIncome = (emp.initial_income_year === targetYear) ? (emp.initial_income || 0) : 0;
+        
+        const totalPastIncome = pastActualIncome + pastInitialIncome;
+        const totalPastHours = totalPastIncome / emp.hourly_wage;
+        
+        // 年間残り枠（時間）
+        const remainingAnnualHours = Math.max(0, totalFiscalHours - totalPastHours);
+        
+        // 残り月数（当月を含む）
+        const remainingMonths = Math.max(1, 13 - targetMonth);
+        
+        // 今月の予算枠
+        const thisMonthBudgetHours = remainingAnnualHours / remainingMonths;
 
         let thisMonthScheduledHours = 0;
         days.forEach(day => {
@@ -232,7 +248,7 @@ export default function SchedulePage() {
             }
         });
 
-        const remainingThisMonthHours = monthlyBudgetHours - thisMonthScheduledHours;
+        const remainingThisMonthHours = thisMonthBudgetHours - thisMonthScheduledHours;
         const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8;
         
         let remainingDays = null;

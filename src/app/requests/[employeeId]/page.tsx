@@ -151,13 +151,9 @@ export default function RequestShiftPage() {
 
   const pageTitle = employee?.request_type === 'work' ? '希望出勤日の提出' : '希望休の提出';
   const payPeriod = useMemo(() => {
-    const d = 10; // 10日締め
-    let refDate = new Date(currentMonth);
-    if (refDate.getDate() <= d) {
-        refDate = subMonths(refDate, 1);
-    }
-    const start = new Date(refDate.getFullYear(), refDate.getMonth(), d + 1);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, d);
+    const refDate = new Date(currentMonth);
+    const start = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+    const end = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
     return { start, end };
   }, [currentMonth]);
 

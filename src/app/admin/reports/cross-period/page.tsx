@@ -17,7 +17,7 @@ const getInitialMonths = (closingDay: string) => {
     const currentYear = today.getFullYear();
     let start, end;
 
-    if (closingDay === '10') {
+    if (closingDay === '31') {
         start = `${currentYear}-01`;
         end = `${currentYear}-12`;
     } else { // 20日締め
@@ -31,6 +31,11 @@ const getPeriodDates = (monthStr: string, closingDay: string) => {
     if (!monthStr) return { start: new Date(), end: new Date() };
     const [year, month] = monthStr.split('-').map(Number);
     const d = parseInt(closingDay, 10);
+    if (d === 31) {
+        const periodStart = new Date(year, month - 1, 1);
+        const periodEnd = new Date(year, month, 0);
+        return { start: periodStart, end: periodEnd };
+    }
     const periodEnd = new Date(year, month - 1, d);
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
@@ -39,7 +44,7 @@ const getPeriodDates = (monthStr: string, closingDay: string) => {
 };
 
 export default function CrossPeriodReportPage() {
-  const [closingDay, setClosingDay] = useState('10');
+  const [closingDay, setClosingDay] = useState('31');
   const [months, setMonths] = useState(() => getInitialMonths(closingDay));
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
   const [useSchedule, setUseSchedule] = useState(false);
@@ -117,7 +122,7 @@ export default function CrossPeriodReportPage() {
         <div className="w-full sm:w-auto">
           <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
           <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
-            <option value="10">10日締め</option>
+            <option value="31">末締め</option>
             <option value="20">20日締め</option>
           </select>
         </div>
@@ -156,7 +161,7 @@ export default function CrossPeriodReportPage() {
                     </th>
                   )
                 })}
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">合計</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase sticky right-0 bg-gray-100 z-10 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">合計</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -172,7 +177,7 @@ export default function CrossPeriodReportPage() {
                         <td key={month} className={`px-6 py-4 text-right ${isCurrentMonth ? 'bg-yellow-50' : ''}`}>{formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}</td>
                       )
                     })}
-                    <td className="px-6 py-4 text-right font-bold">{formatCell(totalValue)}</td>
+                    <td className="px-6 py-4 text-right font-bold sticky right-0 bg-gray-50 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">{formatCell(totalValue)}</td>
                   </tr>
                 );
               })}
@@ -188,7 +193,7 @@ export default function CrossPeriodReportPage() {
                             <td key={index} className={`px-6 py-3 text-right ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{formatCell(total)}</td>
                         )
                     })}
-                    <td className="px-6 py-3 text-right">{formatCell(grandTotal)}</td>
+                    <td className="px-6 py-3 text-right sticky right-0 bg-gray-100 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">{formatCell(grandTotal)}</td>
                 </tr>
             </tfoot>
           </table>

@@ -65,6 +65,10 @@ export default function DashboardPage() {
         {/* Admin Links */}
         {user.isAdmin && !user.isViewer && (
           <>
+            <Link href={`/my-schedule/${user.id}`} className="block p-6 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+              <h2 className="text-xl font-bold">実績入力（マイシフト）</h2>
+              <p>全従業員の勤務実績を編集・確認します。</p>
+            </Link>
             <Link href="/admin/schedule" className="block p-6 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors">
               <h2 className="text-xl font-bold">シフト作成</h2>
               <p>全体のシフト表を作成・編集します。</p>
