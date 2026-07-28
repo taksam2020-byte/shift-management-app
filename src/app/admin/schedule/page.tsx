@@ -480,7 +480,7 @@ export default function SchedulePage() {
                 <td className="border border-gray-300 p-2"></td>
             </tr>
             <tr>
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3}>残勤務日数(目安)</td>
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3} title="未入力の過去実績や当月未来分のシフト予定を考慮した見込みの残日数です">残稼働(見込み) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
                     const remainingDays = annualIncomes[emp.id]?.remainingDays;
                     const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
