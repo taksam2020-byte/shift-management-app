@@ -89,6 +89,10 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold">休業日設定</h2>
               <p>会社独自の休日を設定します。</p>
             </Link>
+            <Link href="/admin/cleanup" className="block p-6 bg-orange-600 text-white rounded-lg shadow-md hover:bg-orange-700 transition-colors">
+              <h2 className="text-xl font-bold">未入力シフト整理</h2>
+              <p>実績が入力されていない過去のシフトを一括削除します。</p>
+            </Link>
             <Link href="/schedule/view" className="block p-6 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition-colors">
               <h2 className="text-xl font-bold">全体シフト確認</h2>
               <p>全員のシフトを閲覧します。</p>
