@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
-import { query } from '@/lib/db.mjs';
+import { query } from '../src/lib/db.mjs';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
-export async function GET() {
+async function run() {
   try {
     const sql = `
       SELECT 
@@ -20,10 +21,13 @@ export async function GET() {
       ORDER BY s.date ASC, e.id ASC
     `;
     const result = await query(sql);
-
-    return NextResponse.json(result.rows);
+    console.log(`Found ${result.rows.length} unentered shifts.`);
+    console.table(result.rows.slice(0, 10)); // 先頭10件
   } catch (error) {
-    console.error('Failed to fetch unentered shifts:', error);
-    return NextResponse.json({ error: 'Failed to fetch unentered shifts' }, { status: 500 });
+    console.error(error);
+  } finally {
+    process.exit();
   }
 }
+
+run();
