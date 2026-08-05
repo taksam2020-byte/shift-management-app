@@ -7,6 +7,8 @@ import ActualsInput from '@/components/ActualsInput';
 import Link from 'next/link';
 
 // --- Type Definitions ---
+interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
+
 interface Shift {
   id: number;
   date: string;
@@ -75,7 +77,8 @@ function ShiftRow({
     onChange: (shiftId: number, field: 'actual_start_time' | 'actual_end_time' | 'break_hours', value: string | number) => void,
     onSave: (shiftId: number) => Promise<void>,
     isAdmin: boolean,
-    onDelete: (shiftId: number) => Promise<void>
+    onDelete: (shiftId: number) => Promise<void>,
+    isHolidayRequest?: boolean
 }) {
     const actualStart = actuals?.actual_start_time || '';
     const actualEnd = actuals?.actual_end_time || '';
@@ -101,6 +104,7 @@ function ShiftRow({
             <div className="flex justify-between items-center w-full mb-3">
                 <div className="flex items-center gap-3">
                     <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
+                    {isHolidayRequest && <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded">休み希望</span>}
                     {isAdmin && (
                         <button
                             type="button"
@@ -146,7 +150,7 @@ function ShiftRow({
     );
 }
 
-function AddShiftRow({ day, employeeId, onSave, defaultHours }: { day: Date, employeeId: string, onSave: () => Promise<void>, defaultHours?: string | null }) {
+function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }: { day: Date, employeeId: string, onSave: () => Promise<void>, defaultHours?: string | null, isHolidayRequest?: boolean }) {
     const defaultStart = defaultHours ? defaultHours.split('-')[0] : '09:00';
     const defaultEnd = defaultHours ? defaultHours.split('-')[1] : '18:00';
 
@@ -188,6 +192,7 @@ function AddShiftRow({ day, employeeId, onSave, defaultHours }: { day: Date, emp
                 <div>
                     <span className="text-lg font-bold text-gray-400">{format(day, 'M月d日')} ({dayOfWeek})</span>
                     <span className="ml-3 text-sm text-gray-400 font-normal">予定なし</span>
+                    {isHolidayRequest && <span className="ml-2 text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded">休み希望あり</span>}
                 </div>
                 {!isEditing ? (
                     <button
@@ -244,6 +249,7 @@ export default function MySchedulePage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -359,8 +365,13 @@ export default function MySchedulePage() {
             const shiftResponse = await fetch(`/api/shifts?employeeId=${employeeId}&startDate=${startDateStr}&endDate=${endDateStr}`);
             if (!shiftResponse.ok) throw new Error('シフトの取得に失敗しました。');
             const shiftData: Shift[] = await shiftResponse.json();
-
+            
+            const reqResponse = await fetch(`/api/shift-requests?employeeId=${employeeId}&startDate=${startDateStr}&endDate=${endDateStr}`);
+            if (!reqResponse.ok) throw new Error('休み希望の取得に失敗しました。');
+            const reqData: ShiftRequest[] = await reqResponse.json();
+            
             setShifts(shiftData);
+            setRequests(reqData);
             
             // 実績の表示用初期データをセット
             const initialActuals: Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }> = {};
@@ -547,6 +558,8 @@ export default function MySchedulePage() {
 
       <ul className="space-y-4">
         {renderedItems.map(({ day, dateStr, shift, hasShift }) => {
+            const isHolidayRequest = requests.some(r => r.date.substring(0, 10) === dateStr && r.request_type === 'holiday');
+            
             if (hasShift && shift) {
                 return (
                     <ShiftRow 
@@ -557,6 +570,7 @@ export default function MySchedulePage() {
                         onSave={handleSaveActuals} 
                         isAdmin={!!loggedInUser?.isAdmin}
                         onDelete={handleDeleteShift}
+                        isHolidayRequest={isHolidayRequest}
                     />
                 );
             } else if (loggedInUser?.isAdmin) {
@@ -567,6 +581,7 @@ export default function MySchedulePage() {
                         employeeId={employeeId}
                         onSave={fetchMySchedule}
                         defaultHours={employee?.default_work_hours}
+                        isHolidayRequest={isHolidayRequest}
                     />
                 );
             }
