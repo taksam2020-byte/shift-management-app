@@ -70,7 +70,8 @@ function ShiftRow({
     onChange,
     onSave, 
     isAdmin, 
-    onDelete 
+    onDelete,
+    isHolidayRequest
 }: { 
     shift: Shift, 
     actuals: { actual_start_time: string; actual_end_time: string; break_hours: number; } | undefined,
