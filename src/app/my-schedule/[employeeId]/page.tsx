@@ -146,9 +146,12 @@ function ShiftRow({
     );
 }
 
-function AddShiftRow({ day, employeeId, onSave }: { day: Date, employeeId: string, onSave: () => Promise<void> }) {
-    const [start, setStart] = useState('09:00');
-    const [end, setEnd] = useState('18:00');
+function AddShiftRow({ day, employeeId, onSave, defaultHours }: { day: Date, employeeId: string, onSave: () => Promise<void>, defaultHours?: string | null }) {
+    const defaultStart = defaultHours ? defaultHours.split('-')[0] : '09:00';
+    const defaultEnd = defaultHours ? defaultHours.split('-')[1] : '18:00';
+
+    const [start, setStart] = useState(defaultStart);
+    const [end, setEnd] = useState(defaultEnd);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -563,6 +566,7 @@ export default function MySchedulePage() {
                         day={day}
                         employeeId={employeeId}
                         onSave={fetchMySchedule}
+                        defaultHours={employee?.default_work_hours}
                     />
                 );
             }

@@ -53,7 +53,7 @@ export default function Header() {
 
   const AdminLinks = () => (
     <>
-      <li><Link href={`/my-schedule/${user!.id}`} className={pathname.startsWith('/my-schedule') ? activeClass : inactiveClass}>実績入力（マイシフト）</Link></li>
+      <li><Link href={`/my-schedule/${user!.id}`} className={pathname.startsWith('/my-schedule') ? activeClass : inactiveClass}>実績入力</Link></li>
       <li><Link href="/admin/schedule" className={pathname === '/admin/schedule' ? activeClass : inactiveClass}>シフト作成</Link></li>
       <li><Link href="/admin/employees" className={pathname === '/admin/employees' ? activeClass : inactiveClass}>従業員管理</Link></li>
       <li><Link href="/admin/reports/monthly" className={pathname === '/admin/reports/monthly' ? activeClass : inactiveClass}>月間集計</Link></li>
