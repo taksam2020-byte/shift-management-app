@@ -65,15 +65,17 @@ export default function ShiftInput({ value, defaultHours, isRequested, requestTy
   };
 
   // Render based on request type
-  if (isRequested) {
+  if (isRequested && !value) {
       if (requestType === 'holiday') {
         return <div className="text-center text-orange-500 font-bold p-2">休</div>;
       }
       // For work requests, we show the full input but with a special background/indicator
   }
 
+  const bgColor = isRequested ? (requestType === 'work' ? 'bg-green-100' : (value ? 'bg-orange-100' : '')) : '';
+
   return (
-    <div className={`flex flex-col items-center justify-center h-full p-1 ${isRequested && requestType === 'work' ? 'bg-green-100' : ''}`} title={title}>
+    <div className={`flex flex-col items-center justify-center h-full p-1 ${bgColor}`} title={title}>
       <input
         type="checkbox"
         checked={isChecked}
