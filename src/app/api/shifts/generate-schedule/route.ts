@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import { eachDayOfInterval, getDay, startOfWeek, parseISO, addDays, subDays } from 'date-fns';
+import { eachDayOfInterval, getDay, startOfWeek, endOfWeek, parseISO, addDays, subDays } from 'date-fns';
 import holiday_jp from '@holiday-jp/holiday_jp';
 
 // --- Types ---
@@ -71,14 +71,31 @@ export async function POST(request: Request) {
         }
 
         // --- Phase 1: Data Fetching & Preparation ---
+        const fetchStart = formatDateUTC(startOfWeek(parseISO(startDate), { weekStartsOn: 1 }));
+        const fetchEnd = formatDateUTC(endOfWeek(parseISO(endDate), { weekStartsOn: 1 }));
+
         const employeesResult = await query('SELECT id, name, group_name, default_work_hours, max_weekly_hours, max_weekly_days, hourly_wage, annual_income_limit, initial_income, initial_income_year FROM employees ORDER BY id');
         const employees: Employee[] = employeesResult.rows;
+
+        // 月またぎを含む既存シフトを取得してベースにする
+        const existingShiftsResult = await query('SELECT employee_id, date, start_time, end_time FROM shifts WHERE date >= $1 AND date <= $2', [fetchStart, fetchEnd]);
 
         const requestsResult = await query('SELECT employee_id, date, request_type FROM shift_requests WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
         const companyHolidaysResult = await query('SELECT date FROM company_holidays WHERE date BETWEEN $1 AND $2', [startDate, endDate]);
 
         const allDays = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
         const schedule: Schedule = {};
+
+        // 既存シフトをスケジュールに事前登録しておく（これによりcanWork等の週の計算で前月分が考慮される）
+        existingShiftsResult.rows.forEach((s: any) => {
+            const d = formatDateUTC(s.date);
+            if (!schedule[d]) schedule[d] = {};
+            if (s.start_time && s.end_time) {
+                schedule[d][s.employee_id] = `${s.start_time.substring(0, 5)}-${s.end_time.substring(0, 5)}`;
+            } else {
+                schedule[d][s.employee_id] = '休み';
+            }
+        });
 
         // --- Pre-computation: Create lookup sets/maps for efficiency ---
         const nonWorkDays = new Set<string>();
