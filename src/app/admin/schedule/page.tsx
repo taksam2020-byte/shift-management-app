@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import ShiftInput from '@/components/ShiftInput';
 
 // --- Type Definitions ---
@@ -111,8 +111,10 @@ export default function SchedulePage() {
       setIsLoading(true);
       setError(null);
       const { start, end } = getPayPeriodInterval(currentDate);
-      const startDateStr = format(start, 'yyyy-MM-dd');
-      const endDateStr = format(end, 'yyyy-MM-dd');
+      const fetchStart = startOfWeek(start, { weekStartsOn: 1 });
+      const fetchEnd = endOfWeek(end, { weekStartsOn: 1 });
+      const startDateStr = format(fetchStart, 'yyyy-MM-dd');
+      const endDateStr = format(fetchEnd, 'yyyy-MM-dd');
       setDays(eachDayOfInterval({ start, end }));
 
       try {
@@ -163,8 +165,8 @@ export default function SchedulePage() {
         setAnnualIncomes(newAnnualIncomes);
 
         const initialSchedule: ScheduleState = {};
-        const daysInPeriod = eachDayOfInterval({ start, end });
-        daysInPeriod.forEach(day => {
+        const fetchDaysInPeriod = eachDayOfInterval({ start: fetchStart, end: fetchEnd });
+        fetchDaysInPeriod.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             initialSchedule[dateStr] = {};
             employeesData.forEach(emp => {
