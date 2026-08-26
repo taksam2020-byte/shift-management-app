@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         const schedule: Schedule = {};
 
         // 既存シフトをスケジュールに事前登録しておく（これによりcanWork等の週の計算で前月分が考慮される）
-        existingShiftsResult.rows.forEach((s: any) => {
+        existingShiftsResult.rows.forEach((s: { employee_id: number; date: Date; start_time: string | null; end_time: string | null }) => {
             const d = formatDateUTC(s.date);
             if (!schedule[d]) schedule[d] = {};
             if (s.start_time && s.end_time) {
