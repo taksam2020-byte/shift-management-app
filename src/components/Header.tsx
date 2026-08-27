@@ -48,6 +48,7 @@ export default function Header() {
       <li><Link href="/admin/reports/monthly" className={pathname === '/admin/reports/monthly' ? activeClass : inactiveClass}>月間集計</Link></li>
       <li><Link href="/admin/reports/cross-period" className={pathname === '/admin/reports/cross-period' ? activeClass : inactiveClass}>年間集計</Link></li>
       <li><Link href="/schedule/view" className={pathname === '/schedule/view' ? activeClass : inactiveClass}>全体シフト確認</Link></li>
+      <li><Link href="/admin/manual" className={pathname === '/admin/manual' ? activeClass : inactiveClass}>使い方ガイド</Link></li>
     </>
   );
 
@@ -58,9 +59,10 @@ export default function Header() {
       <li><Link href="/admin/employees" className={pathname === '/admin/employees' ? activeClass : inactiveClass}>従業員管理</Link></li>
       <li><Link href="/admin/reports/monthly" className={pathname === '/admin/reports/monthly' ? activeClass : inactiveClass}>月間集計</Link></li>
       <li><Link href="/admin/reports/cross-period" className={pathname === '/admin/reports/cross-period' ? activeClass : inactiveClass}>年間集計</Link></li>
-      <li><Link href="/admin/holidays" className={pathname === '/admin/holidays' ? activeClass : inactiveClass}>休業日設定</Link></li>
-      <li><Link href="/admin/cleanup" className={pathname === '/admin/cleanup' ? activeClass : inactiveClass}>未入力シフト整理</Link></li>
-      <li><Link href="/schedule/view" className={pathname === '/schedule/view' ? activeClass : inactiveClass}>全体シフト確認</Link></li>
+      <li><Link href="/admin/holidays" className={pathname === '/admin/holidays' ? activeClass : inactiveClass}>休業日</Link></li>
+      <li><Link href="/admin/cleanup" className={pathname === '/admin/cleanup' ? activeClass : inactiveClass}>シフト整理</Link></li>
+      <li><Link href="/admin/manual" className={pathname === '/admin/manual' ? activeClass : inactiveClass}>使い方</Link></li>
+      <li><Link href="/schedule/view" className={pathname === '/schedule/view' ? activeClass : inactiveClass}>全体シフト</Link></li>
     </>
   );
 
