@@ -107,67 +107,66 @@ function ShiftRow({
     };
 
     return (
-        <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
-            <div className="flex items-center w-full mb-3">
+        <li className={`p-3 sm:p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
+            <div className="flex items-center w-full mb-2">
                 <input 
                     type="checkbox" 
                     checked={isChecked} 
                     onChange={(e) => onCheck(shift.id, e.target.checked)} 
-                    className="w-5 h-5 mr-4 cursor-pointer"
+                    className="w-5 h-5 mr-3 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                 />
                 <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-3">
-                        <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
-                        {isHolidayRequest && <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded">休み希望</span>}
+                    <div className="flex items-center gap-2">
+                        <p className="text-base sm:text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} <span className="text-sm font-normal text-gray-600">({dayOfWeek})</span></p>
+                        {isHolidayRequest && <span className="text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">休み希望</span>}
                         {isAdmin && (
                             <button
                                 type="button"
                                 onClick={() => onDelete(shift.id)}
-                                className="py-1 px-2.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-100 transition-colors"
+                                className="py-0.5 px-2 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-semibold hover:bg-red-100 transition-colors"
                             >
-                                シフト予定を削除
+                                予定を削除
                             </button>
                         )}
                     </div>
-                    <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
+                    <p className="text-[11px] sm:text-sm text-gray-500 whitespace-nowrap ml-2">予: {shift.start_time?.substring(0, 5) || ''}-{shift.end_time?.substring(0, 5) || ''}</p>
                 </div>
             </div>
-            <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full pl-9">
-                <ActualsInput 
-                    startTime={actualStart}
-                    endTime={actualEnd}
-                    canEdit={canEdit}
-                    onTimeChange={handleTimeChange}
-                />
-                <div className="text-center">
-                    <label className="block text-xs font-medium text-gray-700">休憩(h)</label>
-                    <input 
-                        type="number"
-                        step="0.25"
-                        value={breakHours}
-                        onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
-                        className="form-input w-20 text-center"
-                        disabled={!canEdit}
-                    />
+            <form onSubmit={handleSave} className="flex flex-wrap items-center sm:items-end gap-3 w-full pl-8 mt-2">
+                <div className="w-full sm:w-auto flex justify-center sm:justify-start">
+                  <ActualsInput 
+                      startTime={actualStart}
+                      endTime={actualEnd}
+                      canEdit={canEdit}
+                      onTimeChange={handleTimeChange}
+                  />
                 </div>
-                <div className="text-center">
-                    <p className="text-xs font-medium text-gray-700">勤務時間</p>
-                    <p className="font-bold text-lg">{workDuration > 0 ? workDuration.toFixed(2) : '0.00'} h</p>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <button type="submit" className={`py-2 px-4 rounded text-white font-semibold ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300`} disabled={!canEdit}>
-                        保存
-                    </button>
-                    {isSaved && (
-                        <div className="flex flex-col items-center">
-                            <span className="text-xs text-green-700 font-bold mb-1">保存済</span>
-                            {onDeleteActual && (
-                                <button type="button" onClick={() => onDeleteActual(shift.id)} className="text-xs text-red-500 hover:text-red-700 underline">
-                                    保存解除
-                                </button>
-                            )}
-                        </div>
-                    )}
+                <div className="flex-1 flex justify-between sm:justify-start items-center gap-4 sm:gap-6 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
+                  <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-medium text-gray-500">休憩</label>
+                      <input 
+                          type="number"
+                          step="0.25"
+                          value={breakHours}
+                          onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
+                          className="form-input w-16 text-center text-sm py-1 px-1 border-gray-300 rounded"
+                          disabled={!canEdit}
+                      />
+                  </div>
+                  <div className="flex flex-col items-end sm:items-center">
+                      <p className="text-[10px] font-medium text-gray-500 leading-none mb-1">実動</p>
+                      <p className="font-bold text-base leading-none">{workDuration > 0 ? workDuration.toFixed(2) : '0.00'}h</p>
+                  </div>
+                  <div className="flex flex-col items-center ml-auto sm:ml-0">
+                      <button type="submit" className={`py-1.5 px-3 rounded text-white text-xs font-semibold shadow-sm ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300 min-w-[60px]`} disabled={!canEdit}>
+                          {isSaved ? '保存済' : '保存'}
+                      </button>
+                      {isSaved && onDeleteActual && (
+                          <button type="button" onClick={() => onDeleteActual(shift.id)} className="text-[10px] text-red-500 hover:text-red-700 underline mt-1">
+                              解除
+                          </button>
+                      )}
+                  </div>
                 </div>
             </form>
         </li>

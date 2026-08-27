@@ -33,31 +33,29 @@ export default function ActualsInput({ startTime, endTime, canEdit, onTimeChange
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col items-center">
-        <button type="button" onClick={() => handleTimeChange('start', 15)} className="h-5 w-5 leading-none disabled:opacity-50" disabled={!canEdit}>▲</button>
+    <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center border border-gray-300 rounded bg-white">
+        <button type="button" onClick={() => handleTimeChange('start', -15)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1" disabled={!canEdit}>▼</button>
         <input 
             type="text" 
             value={startTime}
             onChange={(e) => onTimeChange('start', e.target.value)}
-            className="form-input w-20 text-center bg-transparent border-0 focus:ring-0"
-            placeholder="開始"
+            className="w-12 sm:w-16 text-center text-sm border-0 focus:ring-0 p-0 sm:p-1 bg-transparent"
             disabled={!canEdit}
         />
-        <button type="button" onClick={() => handleTimeChange('start', -15)} className="h-5 w-5 leading-none disabled:opacity-50" disabled={!canEdit}>▼</button>
+        <button type="button" onClick={() => handleTimeChange('start', 15)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1" disabled={!canEdit}>▲</button>
       </div>
-      <span>-</span>
-      <div className="flex flex-col items-center">
-        <button type="button" onClick={() => handleTimeChange('end', 15)} className="h-5 w-5 leading-none disabled:opacity-50" disabled={!canEdit}>▲</button>
+      <span className="text-gray-400 font-bold">-</span>
+      <div className="flex items-center border border-gray-300 rounded bg-white">
+        <button type="button" onClick={() => handleTimeChange('end', -15)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1" disabled={!canEdit}>▼</button>
         <input 
             type="text" 
             value={endTime}
             onChange={(e) => onTimeChange('end', e.target.value)}
-            className="form-input w-20 text-center bg-transparent border-0 focus:ring-0"
-            placeholder="終了"
+            className="w-12 sm:w-16 text-center text-sm border-0 focus:ring-0 p-0 sm:p-1 bg-transparent"
             disabled={!canEdit}
         />
-        <button type="button" onClick={() => handleTimeChange('end', -15)} className="h-5 w-5 leading-none disabled:opacity-50" disabled={!canEdit}>▼</button>
+        <button type="button" onClick={() => handleTimeChange('end', 15)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1" disabled={!canEdit}>▲</button>
       </div>
     </div>
   );
