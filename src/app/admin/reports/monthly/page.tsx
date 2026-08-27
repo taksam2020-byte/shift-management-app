@@ -121,7 +121,7 @@ export default function MonthlyReportPage() {
 
       const hasSchedule = !!(s.start_time && s.end_time);
       const hasActual = !!s.actual_id;
-      const isPast = dateStr < todayStr;
+      const isPastOrToday = dateStr <= todayStr;
 
       if (hasActual) {
         hours = parseHours(s.actual_start_time || '', s.actual_end_time || '', s.break_hours || 1);
@@ -131,7 +131,7 @@ export default function MonthlyReportPage() {
         time = `${s.start_time.substring(0, 5)}-${s.end_time.substring(0, 5)}`;
       }
 
-      if (isPast && hasSchedule && !hasActual) {
+      if (isPastOrToday && hasSchedule && !hasActual) {
         highlight = true;
         if (!useSchedule) {
             time = '未入力';
