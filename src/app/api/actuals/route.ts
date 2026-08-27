@@ -55,3 +55,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to save actual hours', details: errorMessage }, { status: 500 });
   }
 }
+
+// DELETE handler to remove actual work hours
+export async function DELETE(request: Request) {
+  try {
+    const data = await request.json();
+    const { shift_id } = data;
+
+    if (!shift_id) {
+      return NextResponse.json({ error: 'Shift ID is required' }, { status: 400 });
+    }
+
+    await query('DELETE FROM actual_work_hours WHERE shift_id = $1', [shift_id]);
+    return NextResponse.json({ message: 'Actual hours deleted successfully' }, { status: 200 });
+
+  } catch (error) {
+    console.error('Failed to delete actual hours:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ error: 'Failed to delete actual hours', details: errorMessage }, { status: 500 });
+  }
+}

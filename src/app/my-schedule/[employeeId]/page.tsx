@@ -80,6 +80,9 @@ function ShiftRow({
     isAdmin: boolean,
     onDelete: (shiftId: number) => Promise<void>,
     isHolidayRequest?: boolean
+    isChecked: boolean,
+    onCheck: (shiftId: number, checked: boolean) => void,
+    onDeleteActual?: (shiftId: number) => Promise<void>
 }) {
     const actualStart = actuals?.actual_start_time || '';
     const actualEnd = actuals?.actual_end_time || '';
@@ -102,23 +105,31 @@ function ShiftRow({
 
     return (
         <li className={`p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
-            <div className="flex justify-between items-center w-full mb-3">
-                <div className="flex items-center gap-3">
-                    <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
-                    {isHolidayRequest && <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded">休み希望</span>}
-                    {isAdmin && (
-                        <button
-                            type="button"
-                            onClick={() => onDelete(shift.id)}
-                            className="py-1 px-2.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-100 transition-colors"
-                        >
-                            シフト予定を削除
-                        </button>
-                    )}
+            <div className="flex items-center w-full mb-3">
+                <input 
+                    type="checkbox" 
+                    checked={isChecked} 
+                    onChange={(e) => onCheck(shift.id, e.target.checked)} 
+                    className="w-5 h-5 mr-4 cursor-pointer"
+                />
+                <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center gap-3">
+                        <p className="text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} ({dayOfWeek})</p>
+                        {isHolidayRequest && <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded">休み希望</span>}
+                        {isAdmin && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(shift.id)}
+                                className="py-1 px-2.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-100 transition-colors"
+                            >
+                                シフト予定を削除
+                            </button>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
                 </div>
-                <p className="text-sm text-gray-600">予定: {shift.start_time?.substring(0, 5) || ''} - {shift.end_time?.substring(0, 5) || ''}</p>
             </div>
-            <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full">
+            <form onSubmit={handleSave} className="flex flex-wrap justify-center items-end gap-4 w-full pl-9">
                 <ActualsInput 
                     startTime={actualStart}
                     endTime={actualEnd}
@@ -144,7 +155,16 @@ function ShiftRow({
                     <button type="submit" className={`py-2 px-4 rounded text-white font-semibold ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300`} disabled={!canEdit}>
                         保存
                     </button>
-                    {isSaved && <span className="text-xs text-green-700 font-bold">保存済</span>}
+                    {isSaved && (
+                        <div className="flex flex-col items-center">
+                            <span className="text-xs text-green-700 font-bold mb-1">保存済</span>
+                            {onDeleteActual && (
+                                <button type="button" onClick={() => onDeleteActual(shift.id)} className="text-xs text-red-500 hover:text-red-700 underline">
+                                    保存解除
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </form>
         </li>
@@ -270,6 +290,7 @@ export default function MySchedulePage() {
   
   // 一括保存用ステート
   const [actualsState, setActualsState] = useState<Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }>>({});
+  const [selectedActuals, setSelectedActuals] = useState<Set<number>>(new Set());
   const [isSavingAll, setIsSavingAll] = useState(false);
 
   const days = useMemo(() => {
@@ -398,6 +419,7 @@ export default function MySchedulePage() {
                 };
             });
             setActualsState(initialActuals);
+            setSelectedActuals(new Set());
 
         } catch (err) {
             setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
@@ -420,6 +442,12 @@ export default function MySchedulePage() {
             [field]: value
         }
     }));
+    // 編集されたら自動でチェックを入れる
+    setSelectedActuals(prev => {
+        const next = new Set(prev);
+        next.add(shiftId);
+        return next;
+    });
   };
 
   const handleSaveActuals = async (shiftId: number) => {
@@ -444,24 +472,39 @@ export default function MySchedulePage() {
     }
   };
 
+  const handleDeleteActual = async (shiftId: number) => {
+      if (!window.confirm('この日の勤務実績（保存済データ）を削除しますか？\n※シフト予定自体は残ります。')) return;
+      try {
+          const response = await fetch('/api/actuals', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ shift_id: shiftId })
+          });
+          if (!response.ok) throw new Error('実績の削除に失敗しました。');
+          await fetchMySchedule();
+      } catch (err) {
+          alert(err instanceof Error ? err.message : '削除中にエラーが発生しました。');
+      }
+  };
+
+  const handleToggleSelectAll = () => {
+      if (selectedActuals.size > 0) {
+          setSelectedActuals(new Set());
+      } else {
+          const allIds = shifts.filter(s => s.start_time).map(s => s.id);
+          setSelectedActuals(new Set(allIds));
+      }
+  };
+
   const handleSaveAllActuals = async () => {
     const actualsToSave: { shift_id: number; actual_start_time: string; actual_end_time: string; break_hours: number; }[] = [];
     
-    shifts.forEach(s => {
-        if (!s.start_time) return; // シフト予定がない日は対象外
-        const curr = actualsState[s.id];
-        if (!curr) return;
-
-        const isNew = !s.actual_id; // まだ実績が一度も保存されていない日
-        const isChanged = s.actual_id && (
-            curr.actual_start_time !== (s.actual_start_time?.substring(0, 5) || '') ||
-            curr.actual_end_time !== (s.actual_end_time?.substring(0, 5) || '') ||
-            curr.break_hours !== (s.break_hours ?? 1)
-        );
-
-        if (isNew || isChanged) {
+    selectedActuals.forEach(shiftId => {
+        const curr = actualsState[shiftId];
+        const shift = shifts.find(s => s.id === shiftId);
+        if (shift && curr && shift.start_time) {
             actualsToSave.push({
-                shift_id: s.id,
+                shift_id: shiftId,
                 actual_start_time: curr.actual_start_time,
                 actual_end_time: curr.actual_end_time,
                 break_hours: curr.break_hours
@@ -470,11 +513,11 @@ export default function MySchedulePage() {
     });
 
     if (actualsToSave.length === 0) {
-        alert('保存対象の実績（未登録の実績、または変更された実績）はありません。');
+        alert('保存する実績が選択されていません。チェックボックスで選択してください。');
         return;
     }
 
-    if (!window.confirm(`${actualsToSave.length}件の実績を一括保存（確定）しますか？`)) {
+    if (!window.confirm(`選択された ${actualsToSave.length} 件の実績を一括保存（確定）しますか？`)) {
         return;
     }
 
@@ -550,6 +593,12 @@ export default function MySchedulePage() {
               ))}
             </select>
             <button
+              onClick={handleToggleSelectAll}
+              className="ml-3 py-1.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-xs font-bold shadow-sm transition-colors"
+            >
+              {selectedActuals.size > 0 ? '全選択を解除' : 'すべて選択'}
+            </button>
+            <button
               onClick={handleSaveAllActuals}
               disabled={isSavingAll || shifts.filter(s => s.start_time).length === 0}
               className="ml-3 py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-colors disabled:bg-gray-400"
@@ -586,6 +635,16 @@ export default function MySchedulePage() {
                         isAdmin={!!loggedInUser?.isAdmin}
                         onDelete={handleDeleteShift}
                         isHolidayRequest={isHolidayRequest}
+                        isChecked={selectedActuals.has(shift.id)}
+                        onCheck={(id, checked) => {
+                            setSelectedActuals(prev => {
+                                const next = new Set(prev);
+                                if (checked) next.add(id);
+                                else next.delete(id);
+                                return next;
+                            });
+                        }}
+                        onDeleteActual={handleDeleteActual}
                     />
                 );
             } else if (loggedInUser?.isAdmin) {
