@@ -53,6 +53,7 @@ export default function MonthlyReportPage() {
   const [closingDay, setClosingDay] = useState('31');
   const [dateRange, setDateRange] = useState(() => getPeriodDates(new Date(), '31'));
   const [useSchedule, setUseSchedule] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<ShiftWithActual[]>([]);
   const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
@@ -72,8 +73,9 @@ export default function MonthlyReportPage() {
       setIsLoading(true);
       setError(null);
       try {
+        const empQuery = showInactive ? '?include_inactive=true' : '';
         const [empRes, shiftRes, noteRes, holidayRes, companyHolidayRes] = await Promise.all([
-          fetch('/api/employees'),
+          fetch(`/api/employees${empQuery}`),
           fetch(`/api/shifts?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`),
           fetch(`/api/notes?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`),
           fetch(`/api/holidays?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`),
@@ -101,7 +103,7 @@ export default function MonthlyReportPage() {
       }
     };
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, showInactive]);
 
   // --- Memoized Calculations ---
   const days = useMemo(() => {
@@ -204,6 +206,10 @@ export default function MonthlyReportPage() {
                 <div className="flex items-center">
                   <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                   <label htmlFor="useSchedule" className="ml-2 text-sm text-gray-900 whitespace-nowrap cursor-pointer">未入力の実績をシフト予定で補完</label>
+                </div>
+                <div className="flex items-center ml-2 border-l pl-4 border-gray-200">
+                  <input type="checkbox" id="showInactive" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-gray-600 focus:ring-gray-500" />
+                  <label htmlFor="showInactive" className="ml-2 text-sm text-gray-600 whitespace-nowrap cursor-pointer">退職者も表示する</label>
                 </div>
             </div>
         </div>

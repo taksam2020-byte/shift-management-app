@@ -16,6 +16,7 @@ interface Employee {
   initial_income?: number | null;
   initial_income_year?: number | null;
   hire_date?: string | null;
+  is_active?: boolean;
 }
 
 const initialFormState = {
@@ -32,6 +33,7 @@ const initialFormState = {
   initial_income: '',
   initial_income_year: new Date().getFullYear().toString(),
   hire_date: '',
+  is_active: true,
 };
 
 export default function ManageEmployeesPage() {
@@ -47,7 +49,7 @@ export default function ManageEmployeesPage() {
   const fetchEmployees = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/employees');
+      const response = await fetch('/api/employees?include_inactive=true');
       if (!response.ok) throw new Error('データの取得に失敗しました。');
       const data = await response.json();
       setEmployees(data);
@@ -65,7 +67,11 @@ export default function ManageEmployeesPage() {
   // --- Event Handlers ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
+    if (name === 'is_active') {
+        setFormState(prev => ({ ...prev, [name]: value === 'true' }));
+    } else {
+        setFormState(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSelectEmployee = (emp: Employee) => {
@@ -83,6 +89,7 @@ export default function ManageEmployeesPage() {
       initial_income: String(emp.initial_income || ''),
       initial_income_year: String(emp.initial_income_year || new Date().getFullYear()),
       hire_date: emp.hire_date ? emp.hire_date.substring(0, 10) : '',
+      is_active: emp.is_active !== false,
     });
     setIsEditing(true);
   };
@@ -109,6 +116,7 @@ export default function ManageEmployeesPage() {
         initial_income: formState.initial_income ? Number(formState.initial_income) : null,
         initial_income_year: formState.initial_income_year ? Number(formState.initial_income_year) : null,
         hire_date: formState.hire_date || null,
+        is_active: formState.is_active,
         password: formState.password || undefined,
     };
 
@@ -222,6 +230,14 @@ export default function ManageEmployeesPage() {
               <input type="number" name="initial_income_year" value={formState.initial_income_year} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700">在籍状況</label>
+              <select name="is_active" value={String(formState.is_active)} onChange={handleInputChange} className="mt-1 w-full form-select bg-gray-50 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <option value="true">在籍中 (有効)</option>
+                <option value="false">退職済 (非表示)</option>
+              </select>
+            </div>
+            
             <div className="flex gap-2 mt-4">
                 <button type="submit" className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">{isEditing ? '更新' : '追加'}</button>
                 {isEditing && <button type="button" onClick={clearForm} className="flex-1 bg-gray-300 py-2 px-4 rounded-md hover:bg-gray-400">クリア</button>}
@@ -239,25 +255,27 @@ export default function ManageEmployeesPage() {
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">ID</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">氏名</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">在籍状況</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">グループ</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">提出区分</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週時間</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週日数</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">基本勤務</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">年収上限</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500"></th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {employees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-gray-100">
+                    <tr key={emp.id} className={`hover:bg-gray-100 ${emp.is_active === false ? 'bg-gray-200 text-gray-500' : ''}`}>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-2 py-2 cursor-pointer">{emp.id}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.name}</td>
+                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">
+                          {emp.is_active === false ? <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded">退職済</span> : <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">在籍中</span>}
+                      </td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.group_name || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.request_type === 'work' ? '希望出勤' : '希望休'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_days || '-'}</td>
-                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.default_work_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.annual_income_limit ? `¥${emp.annual_income_limit.toLocaleString()}` : '-'}</td>
                       <td className="px-2 py-2 text-center">
                         <button onClick={() => handleDelete(emp.id)} className="text-red-600 hover:text-red-800 text-xs">削除</button>

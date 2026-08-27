@@ -26,13 +26,15 @@ export async function GET(request: Request) {
   const endMonthStr = searchParams.get('endMonth');   // YYYY-MM
   const closingDay = parseInt(searchParams.get('closingDay') || '31', 10);
   const useSchedule = searchParams.get('useSchedule') === 'true';
+  const includeInactive = searchParams.get('includeInactive') === 'true';
 
   if (!startMonthStr || !endMonthStr) {
     return NextResponse.json({ error: 'Start and end month are required' }, { status: 400 });
   }
 
   try {
-    const employeesResult = await query('SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ORDER BY id');
+    const condition = includeInactive ? '' : 'WHERE is_active = TRUE OR is_active IS NULL';
+    const employeesResult = await query(`SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ${condition} ORDER BY id`);
     const employees: Employee[] = employeesResult.rows;
 
     const monthIntervals = eachMonthOfInterval({

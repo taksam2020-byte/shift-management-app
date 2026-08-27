@@ -38,7 +38,8 @@ async function createTables() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         initial_income INTEGER,
         initial_income_year INTEGER,
-        group_name VARCHAR(50)
+        group_name VARCHAR(50),
+        is_active BOOLEAN DEFAULT TRUE
       );
     `);
     console.log('Table "employees" created or already exists.');

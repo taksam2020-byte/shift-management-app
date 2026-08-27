@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 // GET handler to fetch a single employee by ID
 export async function GET(request: NextRequest, { params }: any) {
   try {
-    const sql = 'SELECT id, name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year FROM employees WHERE id = $1';
+    const sql = 'SELECT id, name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year, hire_date, is_active FROM employees WHERE id = $1';
     const result = await query(sql, [params.id]);
     const employee = result.rows[0];
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: any) {
 export async function PUT(request: NextRequest, { params }: any) {
   try {
     const employeeData = await request.json();
-    const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year, hire_date } = employeeData;
+    const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year, hire_date, is_active } = employeeData;
 
     if (!name || !hourly_wage) {
       return NextResponse.json({ error: '名前と時給は必須です。' }, { status: 400 });
@@ -57,6 +57,11 @@ export async function PUT(request: NextRequest, { params }: any) {
     queryParams.push(initial_income_year);
     updateFields.push(`hire_date = $${paramIndex++}`);
     queryParams.push(hire_date);
+    
+    if (is_active !== undefined) {
+      updateFields.push(`is_active = $${paramIndex++}`);
+      queryParams.push(is_active);
+    }
 
     if (password) {
       const saltRounds = 10;

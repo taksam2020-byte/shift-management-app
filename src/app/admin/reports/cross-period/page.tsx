@@ -48,6 +48,7 @@ export default function CrossPeriodReportPage() {
   const [months, setMonths] = useState(() => getInitialMonths(closingDay));
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
   const [useSchedule, setUseSchedule] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('hours');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function CrossPeriodReportPage() {
             endMonth: months.end,
             closingDay,
             useSchedule: String(useSchedule),
+            includeInactive: String(showInactive),
         });
         const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
         if (!response.ok) {
@@ -83,7 +85,7 @@ export default function CrossPeriodReportPage() {
     };
 
     generateReport();
-  }, [months, closingDay, useSchedule]);
+  }, [months, closingDay, useSchedule, showInactive]);
 
   const { start: startDate, end: _ } = getPeriodDates(months.start, closingDay);
   const { start: __, end: finalEndDate } = getPeriodDates(months.end, closingDay);
@@ -129,6 +131,10 @@ export default function CrossPeriodReportPage() {
         <div className="flex items-center pt-4 sm:pt-0">
           <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
           <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完</label>
+        </div>
+        <div className="flex items-center pt-4 sm:pt-0">
+          <input type="checkbox" id="showInactive" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-gray-600 focus:ring-gray-500" />
+          <label htmlFor="showInactive" className="ml-2 block text-sm text-gray-600">退職者も表示する</label>
         </div>
         <div className="w-full sm:w-auto">
             <label className="block text-sm font-medium text-gray-700">表示項目</label>
