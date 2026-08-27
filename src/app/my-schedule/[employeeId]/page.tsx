@@ -583,7 +583,7 @@ export default function MySchedulePage() {
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       {loggedInUser?.isAdmin && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-6 shadow-sm border border-blue-200 flex flex-wrap items-center justify-between gap-4">
+        <div className="sticky top-16 z-10 bg-blue-50 p-4 rounded-lg mb-6 shadow-md border border-blue-200 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
             <select
