@@ -498,16 +498,7 @@ export default function SchedulePage() {
               );
             })}
           </tbody>
-          <tfoot className="bg-white sticky bottom-0 z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-            <tr className="bg-gray-50">
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3}>日別合計時間</td>
-                {employees.map(emp => (
-                    <td key={emp.id} className="border border-gray-300 p-2 text-center font-bold">
-                        {totalsByEmployee[emp.id] > 0 ? totalsByEmployee[emp.id].toFixed(2) : ''}
-                    </td>
-                ))}
-                <td className="border border-gray-300 p-2"></td>
-            </tr>
+          <tfoot className="bg-gray-50 sticky bottom-0 z-10 border-t-2 border-gray-400 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
             <tr className="bg-gray-50">
                 <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3} title="年間の残り枠から逆算した今月の推奨時間と消化率です">今月の稼働 (時間) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
