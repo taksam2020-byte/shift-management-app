@@ -74,8 +74,17 @@ export default function ShiftInput({ value, defaultHours, isRequested, requestTy
 
   const bgColor = isRequested ? (requestType === 'work' ? 'bg-green-100' : (value ? 'bg-orange-100' : '')) : '';
 
+  let displayTitle = title || '';
+  if (isRequested) {
+      if (requestType === 'work') {
+          displayTitle = displayTitle ? `${displayTitle}\n(出勤希望日です)` : '出勤希望日です';
+      } else if (value) {
+          displayTitle = displayTitle ? `${displayTitle}\n(⚠️ 休み希望の日にシフトが組まれています)` : '⚠️ 休み希望の日にシフトが組まれています';
+      }
+  }
+
   return (
-    <div className={`flex flex-row items-center justify-center h-full py-1 px-0.5 ${bgColor}`} title={title}>
+    <div className={`flex flex-row items-center justify-center h-full py-1 px-0.5 ${bgColor}`} title={displayTitle}>
       <input
         type="checkbox"
         checked={isChecked}
