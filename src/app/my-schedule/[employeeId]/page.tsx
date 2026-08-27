@@ -593,17 +593,20 @@ export default function MySchedulePage() {
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      <div className="sticky top-0 z-10 pt-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 bg-gray-50 border-b border-gray-200 shadow-sm mb-6">
-        <p className="text-xl mb-4 text-center text-gray-800 font-bold">{employee?.name} さん</p>
+      <div className="sticky top-0 z-10 py-2 sm:py-3 -mx-4 px-4 sm:mx-0 sm:px-0 bg-gray-50 border-b border-gray-200 shadow-sm mb-4">
+        <div className={`flex items-center justify-between ${loggedInUser?.isAdmin ? 'mb-2 sm:mb-3' : ''}`}>
+          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm font-semibold transition-colors">前月</button>
+          
+          <div className="flex flex-col items-center">
+            <span className="text-[11px] sm:text-xs text-gray-600 font-bold leading-none mb-1">{employee?.name} さん</span>
+            <span className="text-base sm:text-lg font-bold leading-none text-gray-800">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</span>
+          </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded font-semibold transition-colors">前月</button>
-          <h2 className="text-xl font-bold">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</h2>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded font-semibold transition-colors">次月</button>
+          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm font-semibold transition-colors">次月</button>
         </div>
 
         {loggedInUser?.isAdmin && (
-          <div className="bg-blue-50 p-4 rounded-lg shadow-md border border-blue-200 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-blue-50 p-2 sm:p-3 rounded-lg shadow-sm border border-blue-200 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
               <select
