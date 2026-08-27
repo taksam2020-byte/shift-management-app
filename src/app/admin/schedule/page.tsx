@@ -23,7 +23,7 @@ interface Holiday { date: Date; name: string; }
 type ScheduleState = Record<string, Record<number, string>>;
 type ValidationErrorState = Record<string, Record<number, string | null>>;
 type DailyNoteState = Record<string, string>;
-type AnnualIncomeState = Record<number, { totalIncome: number; remainingDays: number | null; }>;
+type AnnualIncomeState = Record<number, { totalIncome: number; remainingDays: number | null; thisMonthBudgetHours?: number; remainingAnnualIncome?: number; }>;
 
 // --- Helper Functions ---
 const getPayPeriodInterval = (date: Date) => {
@@ -258,7 +258,12 @@ export default function SchedulePage() {
             remainingDays = remainingThisMonthHours / dailyHours;
         }
         
-        newAnnualIncomesState[emp.id] = { ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), remainingDays };
+        newAnnualIncomesState[emp.id] = { 
+            ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), 
+            remainingDays,
+            thisMonthBudgetHours,
+            remainingAnnualIncome: Math.max(0, annualIncomeLimit - totalPastIncome)
+        };
     });
 
     setAnnualIncomes(newAnnualIncomesState);
@@ -430,7 +435,32 @@ export default function SchedulePage() {
               <th className="border border-gray-300 p-2 w-28">日付</th>
               <th className="border border-gray-300 p-2 w-24">備考</th>
               <th className="border border-gray-300 p-2">人数</th>
-              {employees.map((emp) => <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap">{emp.name}</th>)}
+              {employees.map((emp) => {
+                  const budgetHours = annualIncomes[emp.id]?.thisMonthBudgetHours || 0;
+                  const remainingIncome = annualIncomes[emp.id]?.remainingAnnualIncome || 0;
+                  const scheduledHours = totalsByEmployee[emp.id] || 0;
+                  const percent = budgetHours > 0 ? Math.min(100, Math.round((scheduledHours / budgetHours) * 100)) : 0;
+                  const isOver = scheduledHours > budgetHours;
+                  
+                  return (
+                    <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap align-top min-w-[110px]">
+                        <div className="font-bold mb-1 text-center">{emp.name}</div>
+                        {budgetHours > 0 ? (
+                            <div className="text-[10px] font-normal text-left" title={`年間上限まで残り: ￥${remainingIncome.toLocaleString()}\n今月の推奨上限枠: ${budgetHours.toFixed(1)}h\n現在の予定合計: ${scheduledHours.toFixed(1)}h`}>
+                                <div className="flex justify-between text-gray-600 mb-0.5">
+                                    <span>残￥{(remainingIncome/10000).toFixed(1)}万</span>
+                                    <span className={isOver ? 'text-red-600 font-bold' : ''}>{scheduledHours.toFixed(1)}/{budgetHours.toFixed(1)}h</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-0.5">
+                                    <div className={`h-1.5 rounded-full ${isOver ? 'bg-red-500' : (percent > 80 ? 'bg-yellow-500' : 'bg-blue-500')}`} style={{ width: `${percent}%` }}></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-[10px] font-normal text-gray-400 text-center">-</div>
+                        )}
+                    </th>
+                  );
+              })}
               <th className="border border-gray-300 p-2">日別合計</th>
             </tr>
           </thead>
