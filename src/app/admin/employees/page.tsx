@@ -168,6 +168,11 @@ export default function ManageEmployeesPage() {
   // --- Render ---
   return (
     <div className="container mx-auto p-4">
+      <div className="mb-4">
+        <p className="text-sm text-gray-600 bg-blue-50 border border-blue-100 p-2 rounded inline-block">
+          ※ シミュレーションや概算給与の計算に用いる時給は、期間中に時給が変更された場合でも、その日ごとの当時の時給に基づいて正確に計算されます。（現在の基本時給で一律計算されるわけではありません）
+        </p>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
           <h2 className="text-xl font-semibold mb-2">{isEditing ? '従業員を編集' : '従業員を追加'}</h2>
