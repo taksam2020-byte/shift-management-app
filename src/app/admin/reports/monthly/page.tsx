@@ -197,19 +197,19 @@ export default function MonthlyReportPage() {
 
             <div className="flex items-center gap-4 border-l pl-6 border-gray-300">
                 <div className="flex items-center gap-2">
-                  <label htmlFor="closingDay" className="text-sm font-medium text-gray-700 whitespace-nowrap">締め日:</label>
+                  <label htmlFor="closingDay" className="text-sm font-medium text-gray-700 whitespace-nowrap" title="集計期間を変更します。20日締めなら「前月21日〜当月20日」となります。">締め日 <span className="text-gray-400 cursor-help font-normal">ⓘ</span>:</label>
                   <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="form-select text-sm py-1 pl-2 pr-8">
                     <option value="31">末締め</option>
                     <option value="20">20日締め</option>
                   </select>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center" title="実績が未入力（打刻漏れ等）の日について、シフトで予定されていた時間を出勤したものとして計算します。">
                   <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                  <label htmlFor="useSchedule" className="ml-2 text-sm text-gray-900 whitespace-nowrap cursor-pointer">未入力の実績をシフト予定で補完</label>
+                  <label htmlFor="useSchedule" className="ml-2 text-sm text-gray-900 whitespace-nowrap cursor-pointer">未入力の実績を予定で補完 <span className="text-gray-400 cursor-help">ⓘ</span></label>
                 </div>
-                <div className="flex items-center ml-2 border-l pl-4 border-gray-200">
+                <div className="flex items-center ml-2 border-l pl-4 border-gray-200" title="過去の集計を確認するために、すでに退職済（非表示）となった従業員のデータも表示します。">
                   <input type="checkbox" id="showInactive" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-gray-600 focus:ring-gray-500" />
-                  <label htmlFor="showInactive" className="ml-2 text-sm text-gray-600 whitespace-nowrap cursor-pointer">退職者も表示する</label>
+                  <label htmlFor="showInactive" className="ml-2 text-sm text-gray-600 whitespace-nowrap cursor-pointer">退職者も表示する <span className="text-gray-400 cursor-help">ⓘ</span></label>
                 </div>
             </div>
         </div>
@@ -279,7 +279,7 @@ export default function MonthlyReportPage() {
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{grandTotals.hours > 0 ? grandTotals.hours.toFixed(2) : ''}</td>
               </tr>
               <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計概算給与</td>
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2} title="シフト時間と時給から計算した概算です。休憩時間等が一律で引かれているため、実際の支給額とは異なる場合があります。">合計概算給与 <span className="text-gray-500 cursor-help font-normal text-xs">ⓘ</span></td>
                 {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
               </tr>

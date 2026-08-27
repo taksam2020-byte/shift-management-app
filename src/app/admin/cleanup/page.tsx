@@ -94,7 +94,7 @@ export default function CleanupPage() {
   return (
     <div className="container mx-auto p-4 max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">未入力シフトの整理（クリーンアップ）</h1>
+        <h1 className="text-2xl font-bold text-gray-800">未入力シフトの整理（クリーンアップ） <span title="予定されていたのに実績が入力されず放置されている過去のシフトを一括削除し、年間上限の計算ズレを防ぐ機能です。" className="text-gray-400 cursor-help font-normal text-lg">ⓘ</span></h1>
         <Link href="/dashboard" className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
           ← ダッシュボードへ戻る
         </Link>

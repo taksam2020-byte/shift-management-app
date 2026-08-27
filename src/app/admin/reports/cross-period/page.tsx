@@ -122,22 +122,22 @@ export default function CrossPeriodReportPage() {
           <p className="text-xs text-gray-500 mt-1">~ {format(finalEndDate, 'yyyy/M/d')}</p>
         </div>
         <div className="w-full sm:w-auto">
-          <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
+          <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700" title="集計期間を変更します。20日締めなら毎月21日始まりの集計となります。">締め日 <span className="text-gray-400 cursor-help font-normal">ⓘ</span></label>
           <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
             <option value="31">末締め</option>
             <option value="20">20日締め</option>
           </select>
         </div>
-        <div className="flex items-center pt-4 sm:pt-0">
+        <div className="flex items-center pt-4 sm:pt-0" title="実績が未入力（打刻漏れ等）の日について、シフトで予定されていた時間を出勤したものとして計算します。">
           <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完</label>
+          <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900 cursor-pointer">予定で補完 <span className="text-gray-400 cursor-help font-normal">ⓘ</span></label>
         </div>
-        <div className="flex items-center pt-4 sm:pt-0">
+        <div className="flex items-center pt-4 sm:pt-0" title="過去の集計を確認するために、すでに退職済（非表示）となった従業員のデータも表示します。">
           <input type="checkbox" id="showInactive" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-gray-600 focus:ring-gray-500" />
-          <label htmlFor="showInactive" className="ml-2 block text-sm text-gray-600">退職者も表示する</label>
+          <label htmlFor="showInactive" className="ml-2 block text-sm text-gray-600 cursor-pointer">退職者も表示 <span className="text-gray-400 cursor-help font-normal">ⓘ</span></label>
         </div>
         <div className="w-full sm:w-auto">
-            <label className="block text-sm font-medium text-gray-700">表示項目</label>
+            <label className="block text-sm font-medium text-gray-700" title="表の中身を勤務時間、勤務日数、概算給与（時給×時間）のいずれかに切り替えます。">表示項目 <span className="text-gray-400 cursor-help font-normal">ⓘ</span></label>
             <select value={displayMode} onChange={(e) => setDisplayMode(e.target.value as DisplayMode)} className="mt-1 block w-full form-select">
                 <option value="hours">勤務時間</option>
                 <option value="days">勤務日数</option>

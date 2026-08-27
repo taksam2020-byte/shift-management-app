@@ -96,7 +96,7 @@ export default function ManageHolidaysPage() {
 
       {/* Holiday List */}
       <div className="bg-white rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold p-4 border-b">設定済み休業日一覧</h2>
+        <h2 className="text-xl font-semibold p-4 border-b">設定済み休業日一覧 <span title="お店の定休日などを設定します。ここで設定した日はシフト作成画面で全員が自動的に「休み」になります。" className="text-gray-400 cursor-help font-normal text-sm">ⓘ</span></h2>
         {isLoading && <p className="p-4">読み込み中...</p>}
         {error && <p className="p-4 text-red-500">{error}</p>}
         <ul className="divide-y divide-gray-200">

@@ -450,8 +450,8 @@ export default function SchedulePage() {
           
           {/* 右側: アクションボタン */}
           <div className="absolute right-2 flex items-center gap-2">
-            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>仮シフト割当</button>
-            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>シフト保存</button>
+            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="従業員の希望や週・年間の上限を考慮して、システムが自動的にシフトを割り当てます。">仮シフト割当 <span className="font-normal text-green-200">ⓘ</span></button>
+            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="作成・変更したシフトと備考をデータベースに保存します。">シフト保存 <span className="font-normal text-blue-200">ⓘ</span></button>
           </div>
         </div>
       </div>
