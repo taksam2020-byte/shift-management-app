@@ -99,11 +99,11 @@ export default function CrossPeriodReportPage() {
     }
   };
 
-  const columnTotals = reportData ? reportData.months.map(month => 
-    reportData.employees.reduce((acc, emp) => acc + (reportData.results[displayMode][emp.id]?.[month] || 0), 0)
+  const employeeTotals = reportData ? reportData.employees.map(emp => 
+    reportData.months.reduce((acc, month) => acc + (reportData.results[displayMode][emp.id]?.[month] || 0), 0)
   ) : [];
 
-  const grandTotal = columnTotals.reduce((acc, total) => acc + total, 0);
+  const grandTotal = employeeTotals.reduce((acc, total) => acc + total, 0);
 
   const today = startOfDay(new Date());
 
@@ -149,57 +149,51 @@ export default function CrossPeriodReportPage() {
       {error && <p className="text-center text-red-500">{error}</p>}
       {isLoading && <p className="text-center">読み込み中...</p>}
       {reportData && !isLoading && (
-        <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+        <div className="bg-white rounded-lg shadow-md overflow-x-auto" style={{maxHeight: 'calc(100vh - 250px)'}}>
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10 w-32">従業員</th>
-                {reportData.months.map(month => {
-                  const [year, monthNum] = month.split('-');
-                  const { start, end } = getPeriodDates(month, closingDay);
-                  const isCurrentMonth = isWithinInterval(today, { start, end });
-                  return (
-                    <th key={month} className={`px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>
-                      <div className="flex flex-col items-center">
-                        <div>{`${year}年`}</div>
-                        <div>{`${monthNum}月度`}</div>
-                      </div>
-                    </th>
-                  )
-                })}
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase sticky right-0 bg-gray-100 z-10 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">合計</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-30 w-32 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">月度</th>
+                {reportData.employees.map(emp => (
+                  <th key={emp.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                    {emp.name}
+                  </th>
+                ))}
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase sticky right-0 bg-gray-50 z-30 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]">月別合計</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {reportData.employees.map(employee => {
-                const totalValue = reportData.months.reduce((acc, month) => acc + (reportData.results[displayMode][employee.id]?.[month] || 0), 0);
+              {reportData.months.map(month => {
+                const [year, monthNum] = month.split('-');
+                const { start, end } = getPeriodDates(month, closingDay);
+                const isCurrentMonth = isWithinInterval(today, { start, end });
+                
+                const monthTotal = reportData.employees.reduce((acc, emp) => acc + (reportData.results[displayMode][emp.id]?.[month] || 0), 0);
+                
                 return (
-                  <tr key={employee.id}>
-                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white">{employee.name}</td>
-                    {reportData.months.map(month => {
-                      const { start, end } = getPeriodDates(month, closingDay);
-                      const isCurrentMonth = isWithinInterval(today, { start, end });
-                      return (
-                        <td key={month} className={`px-6 py-4 text-right ${isCurrentMonth ? 'bg-yellow-50' : ''}`}>{formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}</td>
-                      )
-                    })}
-                    <td className="px-6 py-4 text-right font-bold sticky right-0 bg-gray-50 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">{formatCell(totalValue)}</td>
+                  <tr key={month} className={isCurrentMonth ? 'bg-yellow-50' : ''}>
+                    <td className={`px-6 py-4 whitespace-nowrap text-center sticky left-0 z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isCurrentMonth ? 'bg-yellow-50' : 'bg-white'}`}>
+                      <div className="font-medium text-gray-900">{`${year}年 ${monthNum}月度`}</div>
+                    </td>
+                    {reportData.employees.map(employee => (
+                      <td key={employee.id} className="px-4 py-4 text-center whitespace-nowrap">
+                        {formatCell(reportData.results[displayMode][employee.id]?.[month] || 0)}
+                      </td>
+                    ))}
+                    <td className={`px-6 py-4 text-right font-bold sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isCurrentMonth ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+                      {formatCell(monthTotal)}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
-            <tfoot className="bg-gray-100 font-bold">
+            <tfoot className="bg-gray-100 font-bold sticky bottom-0 z-20 shadow-[-2px_-2px_4px_rgba(0,0,0,0.05)]">
                 <tr>
-                    <td className="px-6 py-3 text-left sticky left-0 bg-gray-100">合計</td>
-                    {columnTotals.map((total, index) => {
-                        const month = reportData.months[index];
-                        const { start, end } = getPeriodDates(month, closingDay);
-                        const isCurrentMonth = isWithinInterval(today, { start, end });
-                        return (
-                            <td key={index} className={`px-6 py-3 text-right ${isCurrentMonth ? 'bg-yellow-100' : ''}`}>{formatCell(total)}</td>
-                        )
-                    })}
-                    <td className="px-6 py-3 text-right sticky right-0 bg-gray-100 border-l border-gray-200 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">{formatCell(grandTotal)}</td>
+                    <td className="px-6 py-3 text-center sticky left-0 bg-gray-100 z-30 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">年間合計</td>
+                    {employeeTotals.map((total, index) => (
+                        <td key={index} className="px-4 py-3 text-center whitespace-nowrap">{formatCell(total)}</td>
+                    ))}
+                    <td className="px-6 py-3 text-right sticky right-0 bg-gray-100 z-30 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] text-lg">{formatCell(grandTotal)}</td>
                 </tr>
             </tfoot>
           </table>
