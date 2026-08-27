@@ -443,13 +443,12 @@ export default function SchedulePage() {
                   const isOver = scheduledHours > budgetHours;
                   
                   return (
-                    <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap align-top min-w-[110px]">
+                    <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap align-top min-w-[90px]">
                         <div className="font-bold mb-1 text-center">{emp.name}</div>
                         {budgetHours > 0 ? (
-                            <div className="text-[10px] font-normal text-left" title={`年間上限まで残り: ￥${remainingIncome.toLocaleString()}\n今月の推奨上限枠: ${budgetHours.toFixed(1)}h\n現在の予定合計: ${scheduledHours.toFixed(1)}h`}>
-                                <div className="flex justify-between text-gray-600 mb-0.5">
-                                    <span>残￥{(remainingIncome/10000).toFixed(1)}万</span>
-                                    <span className={isOver ? 'text-red-600 font-bold' : ''}>{scheduledHours.toFixed(1)}/{budgetHours.toFixed(1)}h</span>
+                            <div className="text-[10px] font-normal text-center" title={`今月の推奨上限枠: ${budgetHours.toFixed(1)}h\n現在の予定合計: ${scheduledHours.toFixed(1)}h`}>
+                                <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                                    {scheduledHours.toFixed(1)} / {budgetHours.toFixed(1)}h
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 mt-0.5">
                                     <div className={`h-1.5 rounded-full ${isOver ? 'bg-red-500' : (percent > 80 ? 'bg-yellow-500' : 'bg-blue-500')}`} style={{ width: `${percent}%` }}></div>
