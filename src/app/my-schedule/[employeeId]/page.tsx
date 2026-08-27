@@ -106,15 +106,23 @@ function ShiftRow({
         onSave(shift.id);
     };
 
+    const handleBreakChange = (delta: number) => {
+        if (!canEdit) return;
+        const newBreak = Math.max(0, breakHours + delta);
+        onChange(shift.id, 'break_hours', newBreak);
+    };
+
     return (
         <li className={`p-3 sm:p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
             <div className="flex items-center w-full mb-2">
-                <input 
-                    type="checkbox" 
-                    checked={isChecked} 
-                    onChange={(e) => onCheck(shift.id, e.target.checked)} 
-                    className="w-5 h-5 mr-3 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
-                />
+                {isAdmin && (
+                    <input 
+                        type="checkbox" 
+                        checked={isChecked} 
+                        onChange={(e) => onCheck(shift.id, e.target.checked)} 
+                        className="w-5 h-5 mr-3 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                    />
+                )}
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-2">
                         <p className="text-base sm:text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} <span className="text-sm font-normal text-gray-600">({dayOfWeek})</span></p>
@@ -132,7 +140,7 @@ function ShiftRow({
                     <p className="text-[11px] sm:text-sm text-gray-500 whitespace-nowrap ml-2">予: {shift.start_time?.substring(0, 5) || ''}-{shift.end_time?.substring(0, 5) || ''}</p>
                 </div>
             </div>
-            <form onSubmit={handleSave} className="flex flex-wrap items-center sm:items-end gap-3 w-full pl-8 mt-2">
+            <form onSubmit={handleSave} className={`flex flex-wrap items-center sm:items-end gap-3 w-full mt-2 ${isAdmin ? 'pl-8' : ''}`}>
                 <div className="w-full sm:w-auto flex justify-center sm:justify-start">
                   <ActualsInput 
                       startTime={actualStart}
@@ -144,14 +152,18 @@ function ShiftRow({
                 <div className="flex-1 flex justify-between sm:justify-start items-center gap-4 sm:gap-6 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
                   <div className="flex items-center gap-1.5">
                       <label className="text-xs font-medium text-gray-500">休憩</label>
-                      <input 
-                          type="number"
-                          step="0.25"
-                          value={breakHours}
-                          onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
-                          className="form-input w-16 text-center text-sm py-1 px-1 border-gray-300 rounded"
-                          disabled={!canEdit}
-                      />
+                      <div className="flex items-center border border-gray-300 rounded bg-white">
+                        <button type="button" onClick={() => handleBreakChange(-0.25)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1 leading-none" disabled={!canEdit}>▼</button>
+                        <input 
+                            type="number"
+                            step="0.25"
+                            value={breakHours}
+                            onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
+                            className="w-10 sm:w-12 text-center text-sm border-0 focus:ring-0 p-0 sm:p-1 bg-transparent"
+                            disabled={!canEdit}
+                        />
+                        <button type="button" onClick={() => handleBreakChange(0.25)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1 leading-none" disabled={!canEdit}>▲</button>
+                      </div>
                   </div>
                   <div className="flex flex-col items-end sm:items-center">
                       <p className="text-[10px] font-medium text-gray-500 leading-none mb-1">実動</p>
