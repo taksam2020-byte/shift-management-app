@@ -111,20 +111,21 @@ export default function MonthlyReportPage() {
 
   const processedData = useMemo(() => {
     const data: Record<string, Record<number, { hours: number; time: string; highlight: boolean }>> = {};
-    const today = startOfToday();
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
     shifts.forEach(s => {
       const dateStr = s.date.substring(0, 10);
       let hours = 0;
       let time = '';
       let highlight = false;
 
-      const hasSchedule = s.start_time && s.end_time;
-      const hasActual = s.actual_start_time && s.actual_end_time;
-      const isPast = parseISO(dateStr) < today;
+      const hasSchedule = !!(s.start_time && s.end_time);
+      const hasActual = !!s.actual_id;
+      const isPast = dateStr < todayStr;
 
       if (hasActual) {
-        hours = parseHours(s.actual_start_time!, s.actual_end_time!, s.break_hours || 1);
-        time = `${s.actual_start_time!.substring(0, 5)}-${s.actual_end_time!.substring(0, 5)}`;
+        hours = parseHours(s.actual_start_time || '', s.actual_end_time || '', s.break_hours || 1);
+        time = `${s.actual_start_time?.substring(0, 5) || ''}-${s.actual_end_time?.substring(0, 5) || ''}`;
       } else if (useSchedule && hasSchedule) {
         hours = parseHours(s.start_time, s.end_time, 1);
         time = `${s.start_time.substring(0, 5)}-${s.end_time.substring(0, 5)}`;
@@ -132,6 +133,9 @@ export default function MonthlyReportPage() {
 
       if (isPast && hasSchedule && !hasActual) {
         highlight = true;
+        if (!useSchedule) {
+            time = '未入力';
+        }
       }
 
       if (hours > 0 || highlight) {
@@ -266,11 +270,6 @@ export default function MonthlyReportPage() {
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計概算給与</td>
                 {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
-              </tr>
-              <tr className="bg-yellow-50 text-yellow-800">
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-yellow-100" colSpan={2}>未確定シフト数</td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center font-normal">{employeeTotals[emp.id]?.unconfirmed > 0 ? `${employeeTotals[emp.id].unconfirmed}件` : ''}</td>)}
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center font-bold">{grandTotals.unconfirmed > 0 ? `${grandTotals.unconfirmed}件` : ''}</td>
               </tr>
             </tfoot>
           </table>
