@@ -440,8 +440,8 @@ export default function SchedulePage() {
   return (
     <div className="p-2 flex flex-col h-full">
       <div className="flex-shrink-0 mb-2">
-        <div className="flex flex-wrap items-center justify-between bg-white p-2 rounded shadow-sm gap-2">
-          {/* 左側: 月切替 */}
+        <div className="relative flex flex-wrap items-center justify-center bg-white p-2 rounded shadow-sm gap-2 min-h-[48px]">
+          {/* 中央: 月切替 */}
           <div className="flex items-center gap-2">
             <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">前月</button>
             <h2 className="text-base font-semibold whitespace-nowrap">{format(currentDate, 'yyyy年 M月')} <span className="text-sm font-normal text-gray-500">({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</span></h2>
@@ -449,21 +449,21 @@ export default function SchedulePage() {
           </div>
           
           {/* 右側: アクションボタン */}
-          <div className="flex items-center gap-2">
-            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
-            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>スケジュールを保存</button>
+          <div className="absolute right-2 flex items-center gap-2">
+            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>仮シフト割当</button>
+            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>シフト保存</button>
           </div>
         </div>
       </div>
       <div className="flex-grow overflow-auto">
         <table className="min-w-full border-collapse">
-          <thead className="bg-gray-100 sticky top-0 z-10">
-            <tr>
-              <th className="border border-gray-300 p-2 w-28">日付</th>
-              <th className="border border-gray-300 p-2 w-24">備考</th>
-              <th className="border border-gray-300 p-2">人数</th>
-              {employees.map((emp) => <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap text-center align-middle min-w-[90px]">{emp.name}</th>)}
-              <th className="border border-gray-300 p-2">日別合計</th>
+          <thead className="sticky top-0 z-10 shadow-[0_2px_10px_rgba(0,0,0,0.1)]">
+            <tr className="bg-gray-100">
+              <th className="border border-gray-300 p-2 w-28 bg-gray-100">日付</th>
+              <th className="border border-gray-300 p-2 w-24 bg-gray-100">備考</th>
+              <th className="border border-gray-300 p-2 bg-gray-100">人数</th>
+              {employees.map((emp) => <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap text-center align-middle min-w-[90px] bg-gray-100">{emp.name}</th>)}
+              <th className="border border-gray-300 p-2 bg-gray-100">日別合計</th>
             </tr>
           </thead>
           <tbody>
@@ -515,7 +515,7 @@ export default function SchedulePage() {
                     return (
                         <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
                             {hasLimit && budgetHours > 0 ? (
-                                <div className="text-[10px]">
+                                <div className="text-xs">
                                     <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
                                         {scheduledHours.toFixed(1)} / {budgetHours.toFixed(1)} h
                                     </div>
@@ -540,7 +540,7 @@ export default function SchedulePage() {
                     return (
                         <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
                             {hasLimit && budgetDays > 0 ? (
-                                <div className="text-[10px]">
+                                <div className="text-xs">
                                     <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
                                         {scheduledDays} / {budgetDays.toFixed(1)} 日
                                     </div>
@@ -567,7 +567,7 @@ export default function SchedulePage() {
                     return (
                         <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
                             {hasLimit && totalHours > 0 ? (
-                                <div className="text-[10px] relative">
+                                <div className="text-xs relative">
                                     <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
                                         {scheduledHours.toFixed(0)} / {totalHours.toFixed(0)} h
                                     </div>

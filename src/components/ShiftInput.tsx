@@ -83,16 +83,16 @@ export default function ShiftInput({ value, defaultHours, isRequested, requestTy
         className="form-checkbox h-3.5 w-3.5 mr-1 flex-shrink-0"
       />
       {isChecked && (
-        <div className="flex items-center gap-0.5 text-[11px] leading-tight">
+        <div className="flex items-center gap-0.5 text-xs font-medium leading-tight">
           <div className="flex flex-col items-center">
             <button onClick={() => handleTimeChange('start', 15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▲</button>
-            <span className="w-8 text-center">{startTime}</span>
+            <span className="w-9 text-center">{startTime}</span>
             <button onClick={() => handleTimeChange('start', -15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▼</button>
           </div>
           <span className="text-gray-500">-</span>
           <div className="flex flex-col items-center">
             <button onClick={() => handleTimeChange('end', 15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▲</button>
-            <span className="w-8 text-center">{endTime}</span>
+            <span className="w-9 text-center">{endTime}</span>
             <button onClick={() => handleTimeChange('end', -15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▼</button>
           </div>
         </div>
