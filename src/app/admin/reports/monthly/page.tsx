@@ -143,16 +143,20 @@ export default function MonthlyReportPage() {
   }, [shifts, useSchedule]);
 
   const employeeTotals = useMemo(() => {
-    const totals: Record<number, { days: number; hours: number; salary: number }> = {};
-    employees.forEach(emp => { totals[emp.id] = { days: 0, hours: 0, salary: 0 }; });
+    const totals: Record<number, { days: number; hours: number; salary: number; unconfirmed: number }> = {};
+    employees.forEach(emp => { totals[emp.id] = { days: 0, hours: 0, salary: 0, unconfirmed: 0 }; });
     days.forEach(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
       employees.forEach(emp => {
         const hours = processedData[dateStr]?.[emp.id]?.hours || 0;
+        const highlight = processedData[dateStr]?.[emp.id]?.highlight;
         if (hours > 0) {
           totals[emp.id].days += 1;
           totals[emp.id].hours += hours;
           totals[emp.id].salary += hours * emp.hourly_wage;
+        }
+        if (highlight) {
+          totals[emp.id].unconfirmed += 1;
         }
       });
     });
@@ -164,13 +168,23 @@ export default function MonthlyReportPage() {
       acc.days += curr.days;
       acc.hours += curr.hours;
       acc.salary += curr.salary;
+      acc.unconfirmed += curr.unconfirmed;
       return acc;
-    }, { days: 0, hours: 0, salary: 0 });
+    }, { days: 0, hours: 0, salary: 0, unconfirmed: 0 });
   }, [employeeTotals]);
 
   // --- Render ---
   return (
     <div className="p-4 flex flex-col">
+      {grandTotals.unconfirmed > 0 && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded-md shadow-sm">
+          <p className="font-bold flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path></svg>
+            未確定のシフト（実績未入力）が全体で {grandTotals.unconfirmed} 件あります
+          </p>
+          <p className="text-sm mt-1 ml-7">対象箇所は表内で黄色くハイライトされています。従業員の実績入力画面から保存を完了させてください。</p>
+        </div>
+      )}
       {/* Controls */}
       <div className="bg-white p-2 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
@@ -250,8 +264,13 @@ export default function MonthlyReportPage() {
               </tr>
               <tr>
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2}>合計概算給与</td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '19x solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
+                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
+              </tr>
+              <tr className="bg-yellow-50 text-yellow-800">
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-yellow-100" colSpan={2}>未確定シフト数</td>
+                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center font-normal">{employeeTotals[emp.id]?.unconfirmed > 0 ? `${employeeTotals[emp.id].unconfirmed}件` : ''}</td>)}
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center font-bold">{grandTotals.unconfirmed > 0 ? `${grandTotals.unconfirmed}件` : ''}</td>
               </tr>
             </tfoot>
           </table>
