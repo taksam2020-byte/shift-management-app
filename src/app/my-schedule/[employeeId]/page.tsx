@@ -152,8 +152,15 @@ function ShiftRow({
 }
 
 function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }: { day: Date, employeeId: string, onSave: () => Promise<void>, defaultHours?: string | null, isHolidayRequest?: boolean }) {
-    const defaultStart = defaultHours ? defaultHours.split('-')[0] : '09:00';
-    const defaultEnd = defaultHours ? defaultHours.split('-')[1] : '18:00';
+    const formatTime = (t?: string) => {
+        if (!t) return '';
+        const [h, m] = t.split(':');
+        if (h && m) return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+        return t;
+    };
+
+    const defaultStart = defaultHours ? formatTime(defaultHours.split('-')[0]) : '09:00';
+    const defaultEnd = defaultHours ? formatTime(defaultHours.split('-')[1]) : '18:00';
 
     const [start, setStart] = useState(defaultStart);
     const [end, setEnd] = useState(defaultEnd);
@@ -162,8 +169,8 @@ function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }
 
     useEffect(() => {
         if (defaultHours) {
-            setStart(defaultHours.split('-')[0]);
-            setEnd(defaultHours.split('-')[1]);
+            setStart(formatTime(defaultHours.split('-')[0]));
+            setEnd(formatTime(defaultHours.split('-')[1]));
         }
     }, [defaultHours]);
 
