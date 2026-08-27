@@ -438,16 +438,21 @@ export default function SchedulePage() {
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
 
   return (
-    <div className="p-4 flex flex-col h-full">
-      <div className="flex-shrink-0">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">前月</button>
-          <h2 className="text-xl font-semibold">{format(currentDate, 'yyyy年 M月')} ({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</h2>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">次月</button>
-        </div>
-        <div className="flex gap-4 mb-4">
-          <button onClick={handleGenerateSchedule} className="w-full py-2 px-4 bg-green-500 text-white font-bold rounded hover:bg-green-600 disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
-          <button onClick={() => handleSave()} className="w-full py-2 px-4 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={isLoading}>このスケジュールを保存する</button>
+    <div className="p-2 flex flex-col h-full">
+      <div className="flex-shrink-0 mb-2">
+        <div className="flex flex-wrap items-center justify-between bg-white p-2 rounded shadow-sm gap-2">
+          {/* 左側: 月切替 */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">前月</button>
+            <h2 className="text-base font-semibold whitespace-nowrap">{format(currentDate, 'yyyy年 M月')} <span className="text-sm font-normal text-gray-500">({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</span></h2>
+            <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">次月</button>
+          </div>
+          
+          {/* 右側: アクションボタン */}
+          <div className="flex items-center gap-2">
+            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>仮シフト自動作成</button>
+            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading}>スケジュールを保存</button>
+          </div>
         </div>
       </div>
       <div className="flex-grow overflow-auto">
