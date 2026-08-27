@@ -75,25 +75,25 @@ export default function ShiftInput({ value, defaultHours, isRequested, requestTy
   const bgColor = isRequested ? (requestType === 'work' ? 'bg-green-100' : (value ? 'bg-orange-100' : '')) : '';
 
   return (
-    <div className={`flex flex-col items-center justify-center h-full py-1 ${bgColor}`} title={title}>
+    <div className={`flex flex-row items-center justify-center h-full py-1 px-0.5 ${bgColor}`} title={title}>
       <input
         type="checkbox"
         checked={isChecked}
         onChange={(e) => handleCheck(e.target.checked)}
-        className="form-checkbox h-3.5 w-3.5 mb-0.5"
+        className="form-checkbox h-3.5 w-3.5 mr-1 flex-shrink-0"
       />
       {isChecked && (
-        <div className="flex flex-col items-center text-[11px] leading-tight">
-          <div className="flex items-center justify-center">
-            <button onClick={() => handleTimeChange('start', -15)} className="px-1 text-gray-400 hover:text-gray-700">▼</button>
+        <div className="flex items-center gap-0.5 text-[11px] leading-tight">
+          <div className="flex flex-col items-center">
+            <button onClick={() => handleTimeChange('start', 15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▲</button>
             <span className="w-8 text-center">{startTime}</span>
-            <button onClick={() => handleTimeChange('start', 15)} className="px-1 text-gray-400 hover:text-gray-700">▲</button>
+            <button onClick={() => handleTimeChange('start', -15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▼</button>
           </div>
-          <div className="text-gray-300 text-[8px] transform rotate-90 leading-none">~</div>
-          <div className="flex items-center justify-center">
-            <button onClick={() => handleTimeChange('end', -15)} className="px-1 text-gray-400 hover:text-gray-700">▼</button>
+          <span className="text-gray-500">-</span>
+          <div className="flex flex-col items-center">
+            <button onClick={() => handleTimeChange('end', 15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▲</button>
             <span className="w-8 text-center">{endTime}</span>
-            <button onClick={() => handleTimeChange('end', 15)} className="px-1 text-gray-400 hover:text-gray-700">▲</button>
+            <button onClick={() => handleTimeChange('end', -15)} className="px-1 text-gray-400 hover:text-gray-700 leading-none">▼</button>
           </div>
         </div>
       )}
