@@ -23,7 +23,17 @@ interface Holiday { date: Date; name: string; }
 type ScheduleState = Record<string, Record<number, string>>;
 type ValidationErrorState = Record<string, Record<number, string | null>>;
 type DailyNoteState = Record<string, string>;
-type AnnualIncomeState = Record<number, { totalIncome: number; remainingDays: number | null; thisMonthBudgetHours?: number; remainingAnnualIncome?: number; }>;
+type AnnualIncomeState = Record<number, { 
+    totalIncome: number; 
+    remainingDays: number | null; 
+    thisMonthBudgetHours?: number; 
+    remainingAnnualIncome?: number; 
+    annualTotalHours?: number;
+    annualScheduledHours?: number;
+    annualTargetPercent?: number;
+    thisMonthBudgetDays?: number;
+    thisMonthScheduledDays?: number;
+}>;
 
 // --- Helper Functions ---
 const getPayPeriodInterval = (date: Date) => {
@@ -242,11 +252,13 @@ export default function SchedulePage() {
         const thisMonthBudgetHours = remainingAnnualHours / remainingMonths;
 
         let thisMonthScheduledHours = 0;
+        let thisMonthScheduledDays = 0;
         days.forEach(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const shiftTime = schedule[dateStr]?.[emp.id];
             if (shiftTime) {
                 thisMonthScheduledHours += parseShiftTime(shiftTime, true);
+                thisMonthScheduledDays += 1;
             }
         });
 
@@ -254,15 +266,25 @@ export default function SchedulePage() {
         const dailyHours = emp.default_work_hours ? parseShiftTime(emp.default_work_hours, true) : 8;
         
         let remainingDays = null;
+        let thisMonthBudgetDays = 0;
         if (dailyHours > 0) {
             remainingDays = remainingThisMonthHours / dailyHours;
+            thisMonthBudgetDays = thisMonthBudgetHours / dailyHours;
         }
+        
+        const annualScheduledHours = totalPastHours + thisMonthScheduledHours;
+        const annualTargetPercent = (targetMonth / 12) * 100;
         
         newAnnualIncomesState[emp.id] = { 
             ...(newAnnualIncomesState[emp.id] || { totalIncome: 0 }), 
             remainingDays,
             thisMonthBudgetHours,
-            remainingAnnualIncome: Math.max(0, annualIncomeLimit - totalPastIncome)
+            remainingAnnualIncome: Math.max(0, annualIncomeLimit - totalPastIncome),
+            annualTotalHours: totalFiscalHours,
+            annualScheduledHours,
+            annualTargetPercent,
+            thisMonthBudgetDays,
+            thisMonthScheduledDays
         };
     });
 
@@ -435,31 +457,7 @@ export default function SchedulePage() {
               <th className="border border-gray-300 p-2 w-28">日付</th>
               <th className="border border-gray-300 p-2 w-24">備考</th>
               <th className="border border-gray-300 p-2">人数</th>
-              {employees.map((emp) => {
-                  const budgetHours = annualIncomes[emp.id]?.thisMonthBudgetHours || 0;
-                  const remainingIncome = annualIncomes[emp.id]?.remainingAnnualIncome || 0;
-                  const scheduledHours = totalsByEmployee[emp.id] || 0;
-                  const percent = budgetHours > 0 ? Math.min(100, Math.round((scheduledHours / budgetHours) * 100)) : 0;
-                  const isOver = scheduledHours > budgetHours;
-                  
-                  return (
-                    <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap align-top min-w-[90px]">
-                        <div className="font-bold mb-1 text-center">{emp.name}</div>
-                        {budgetHours > 0 ? (
-                            <div className="text-[10px] font-normal text-center" title={`今月の推奨上限枠: ${budgetHours.toFixed(1)}h\n現在の予定合計: ${scheduledHours.toFixed(1)}h`}>
-                                <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
-                                    {scheduledHours.toFixed(1)} / {budgetHours.toFixed(1)}h
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-0.5">
-                                    <div className={`h-1.5 rounded-full ${isOver ? 'bg-red-500' : (percent > 80 ? 'bg-yellow-500' : 'bg-blue-500')}`} style={{ width: `${percent}%` }}></div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-[10px] font-normal text-gray-400 text-center">-</div>
-                        )}
-                    </th>
-                  );
-              })}
+              {employees.map((emp) => <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap text-center align-middle min-w-[90px]">{emp.name}</th>)}
               <th className="border border-gray-300 p-2">日別合計</th>
             </tr>
           </thead>
@@ -500,9 +498,9 @@ export default function SchedulePage() {
               );
             })}
           </tbody>
-          <tfoot className="bg-gray-100 sticky bottom-0 z-10">
-            <tr>
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3}>合計勤務時間</td>
+          <tfoot className="bg-white sticky bottom-0 z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+            <tr className="bg-gray-50">
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3}>日別合計時間</td>
                 {employees.map(emp => (
                     <td key={emp.id} className="border border-gray-300 p-2 text-center font-bold">
                         {totalsByEmployee[emp.id] > 0 ? totalsByEmployee[emp.id].toFixed(2) : ''}
@@ -510,19 +508,79 @@ export default function SchedulePage() {
                 ))}
                 <td className="border border-gray-300 p-2"></td>
             </tr>
-            <tr>
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3} title="未入力の過去実績や当月未来分のシフト予定を考慮した見込みの残日数です">残稼働(見込み) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+            <tr className="bg-gray-50">
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3} title="年間の残り枠から逆算した今月の推奨時間と消化率です">今月の稼働 (時間) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
-                    const remainingDays = annualIncomes[emp.id]?.remainingDays;
+                    const budgetHours = annualIncomes[emp.id]?.thisMonthBudgetHours || 0;
+                    const scheduledHours = totalsByEmployee[emp.id] || 0;
+                    const percent = budgetHours > 0 ? Math.min(100, Math.round((scheduledHours / budgetHours) * 100)) : 0;
+                    const isOver = scheduledHours > budgetHours;
                     const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
-                    let textColor = 'text-gray-500';
-                    if (remainingDays != null) {
-                        if (remainingDays < 0) textColor = 'text-red-500 font-bold';
-                        else if (remainingDays < 5) textColor = 'text-yellow-500';
-                    }
                     return (
-                        <td key={emp.id} className={`border border-gray-300 p-2 text-center font-semibold ${textColor}`}>
-                            {hasLimit ? (remainingDays != null ? remainingDays.toFixed(1) : '-') : '-'}
+                        <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
+                            {hasLimit && budgetHours > 0 ? (
+                                <div className="text-[10px]">
+                                    <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                                        {scheduledHours.toFixed(1)} / {budgetHours.toFixed(1)} h
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mx-auto">
+                                        <div className={`h-1.5 rounded-full ${isOver ? 'bg-red-500' : (percent > 80 ? 'bg-yellow-500' : 'bg-blue-500')}`} style={{ width: `${percent}%` }}></div>
+                                    </div>
+                                </div>
+                            ) : '-'}
+                        </td>
+                    );
+                })}
+                <td className="border border-gray-300 p-2"></td>
+            </tr>
+            <tr className="bg-gray-50">
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3} title="年間の残り枠から逆算した今月の推奨日数と消化率です">今月の稼働 (日数) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+                {employees.map(emp => {
+                    const budgetDays = annualIncomes[emp.id]?.thisMonthBudgetDays || 0;
+                    const scheduledDays = annualIncomes[emp.id]?.thisMonthScheduledDays || 0;
+                    const percent = budgetDays > 0 ? Math.min(100, Math.round((scheduledDays / budgetDays) * 100)) : 0;
+                    const isOver = scheduledDays > budgetDays;
+                    const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
+                    return (
+                        <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
+                            {hasLimit && budgetDays > 0 ? (
+                                <div className="text-[10px]">
+                                    <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                                        {scheduledDays} / {budgetDays.toFixed(1)} 日
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mx-auto">
+                                        <div className={`h-1.5 rounded-full ${isOver ? 'bg-red-500' : (percent > 80 ? 'bg-yellow-500' : 'bg-blue-500')}`} style={{ width: `${percent}%` }}></div>
+                                    </div>
+                                </div>
+                            ) : '-'}
+                        </td>
+                    );
+                })}
+                <td className="border border-gray-300 p-2"></td>
+            </tr>
+            <tr className="bg-gray-100">
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3} title="年間の上限時間に対する現在（予定込）の消化状況です。縦線は経過月数による適正ペースを表します。">年間の消化状況 <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+                {employees.map(emp => {
+                    const totalHours = annualIncomes[emp.id]?.annualTotalHours || 0;
+                    const scheduledHours = annualIncomes[emp.id]?.annualScheduledHours || 0;
+                    const targetPercent = annualIncomes[emp.id]?.annualTargetPercent || 0;
+                    const percent = totalHours > 0 ? Math.min(100, (scheduledHours / totalHours) * 100) : 0;
+                    const isOver = scheduledHours > totalHours;
+                    const isFastPace = percent > targetPercent + 5; // 目標より5%以上速いペースなら警告色
+                    const hasLimit = emp.annual_income_limit && emp.annual_income_limit > 0;
+                    return (
+                        <td key={emp.id} className="border border-gray-300 p-2 text-center align-middle">
+                            {hasLimit && totalHours > 0 ? (
+                                <div className="text-[10px] relative">
+                                    <div className={`mb-0.5 ${isOver ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                                        {scheduledHours.toFixed(0)} / {totalHours.toFixed(0)} h
+                                    </div>
+                                    <div className="w-full bg-gray-300 rounded-full h-2 mx-auto relative overflow-hidden">
+                                        <div className={`h-2 rounded-full ${isOver ? 'bg-red-500' : (isFastPace ? 'bg-yellow-500' : 'bg-green-500')}`} style={{ width: `${percent}%` }}></div>
+                                        <div className="absolute top-0 bottom-0 border-l-2 border-red-600" style={{ left: `${targetPercent}%`, zIndex: 10 }}></div>
+                                    </div>
+                                </div>
+                            ) : '-'}
                         </td>
                     );
                 })}
