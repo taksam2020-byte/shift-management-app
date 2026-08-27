@@ -180,40 +180,46 @@ export default function MonthlyReportPage() {
   // --- Render ---
   return (
     <div className="p-4 flex flex-col">
-      {grandTotals.unconfirmed > 0 && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded-md shadow-sm">
-          <p className="font-bold flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path></svg>
-            未確定のシフト（実績未入力）が全体で {grandTotals.unconfirmed} 件あります
-          </p>
-          <p className="text-sm mt-1 ml-7">対象箇所は表内で黄色くハイライトされています。従業員の実績入力画面から保存を完了させてください。</p>
-        </div>
-      )}
-      {/* Controls */}
-      <div className="bg-white p-2 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
-        <div className="flex items-center gap-2">
-            <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">前月</button>
-            <div className="text-center p-2">
-                <h2 className="text-lg font-semibold">{format(currentMonth, 'yyyy年 M月度')}</h2>
-                <p className="text-xs text-gray-500">({dateRange.startDate} ~ {dateRange.endDate})</p>
+      {/* Controls & Alert */}
+      <div className="bg-white p-2 rounded-lg shadow-md mb-4 flex flex-wrap items-center justify-between gap-4">
+        {/* 左側: 月切替とコントロール */}
+        <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="px-3 py-1.5 bg-gray-200 rounded-md text-sm hover:bg-gray-300">前月</button>
+                <div className="text-center p-1 px-2">
+                    <h2 className="text-base font-semibold whitespace-nowrap">{format(currentMonth, 'yyyy年 M月度')}</h2>
+                    <p className="text-[10px] text-gray-500">({dateRange.startDate} ~ {dateRange.endDate})</p>
+                </div>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-3 py-1.5 bg-gray-200 rounded-md text-sm hover:bg-gray-300">次月</button>
             </div>
-            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 bg-gray-200 rounded-md">次月</button>
+
+            <div className="flex items-center gap-4 border-l pl-6 border-gray-300">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="closingDay" className="text-sm font-medium text-gray-700 whitespace-nowrap">締め日:</label>
+                  <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="form-select text-sm py-1 pl-2 pr-8">
+                    <option value="31">末締め</option>
+                    <option value="20">20日締め</option>
+                  </select>
+                </div>
+                <div className="flex items-center">
+                  <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                  <label htmlFor="useSchedule" className="ml-2 text-sm text-gray-900 whitespace-nowrap cursor-pointer">未入力の実績をシフト予定で補完</label>
+                </div>
+            </div>
         </div>
 
-        {/* 締め日選択とチェックボックスのグループ */}
-        <div className="flex items-end gap-4 ml-8"> {/* ml-8 for spacing from month controls */}
-            <div className="w-full sm:w-auto">
-              <label htmlFor="closingDay" className="block text-sm font-medium text-gray-700">締め日</label>
-              <select id="closingDay" value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className="mt-1 block w-full form-select">
-                <option value="31">末締め</option>
-                <option value="20">20日締め</option>
-              </select>
+        {/* 右側: アラート (ある場合のみ) */}
+        {grandTotals.unconfirmed > 0 && (
+            <div className="flex-grow flex justify-end">
+                <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-md shadow-sm flex items-center text-sm">
+                  <svg className="w-5 h-5 mr-2 text-yellow-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path></svg>
+                  <div>
+                      <span className="font-bold">未入力が {grandTotals.unconfirmed} 件あります</span>
+                      <span className="text-yellow-700 ml-2 hidden lg:inline">従業員の実績入力画面から保存を完了させてください。</span>
+                  </div>
+                </div>
             </div>
-            <div className="flex items-center pt-4 sm:pt-0">
-              <input type="checkbox" id="useSchedule" checked={useSchedule} onChange={(e) => setUseSchedule(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-              <label htmlFor="useSchedule" className="ml-2 block text-sm text-gray-900">未入力の実績をシフト予定で補完する</label>
-            </div>
-        </div>
+        )}
       </div>
 
       {/* Report Table */}
