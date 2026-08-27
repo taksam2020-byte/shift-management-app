@@ -170,7 +170,7 @@ function ShiftRow({
                       <p className="font-bold text-base leading-none">{workDuration > 0 ? workDuration.toFixed(2) : '0.00'}h</p>
                   </div>
                   <div className="flex flex-col items-center ml-auto sm:ml-0">
-                      <button type="submit" className={`py-1.5 px-3 rounded text-white text-xs font-semibold shadow-sm ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300 min-w-[60px]`} disabled={!canEdit}>
+                      <button type="submit" className={`py-1.5 px-3 rounded text-white text-xs font-semibold shadow-sm ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300 min-w-[64px] whitespace-nowrap`} disabled={!canEdit}>
                           {isSaved ? '保存済' : '保存'}
                       </button>
                       {isSaved && onDeleteActual && (
