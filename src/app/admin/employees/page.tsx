@@ -185,10 +185,15 @@ export default function ManageEmployeesPage() {
               <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700" title="自動シフト作成時、同じ日に同じグループの人ばかりが偏らないように（別グループの人を優先してバランス良く配置するように）分散させるための設定です。例: ホール, キッチン, ベテラン等">
+              <label className="block text-sm font-medium text-gray-700" title="自動シフト作成時、同じ日に同じグループの人ばかりが偏らないように（別グループの人を優先してバランス良く配置するように）分散させるための設定です。">
                 グループ (任意) <span className="text-gray-400 cursor-help">(?)</span>
               </label>
-              <input type="text" name="group_name" value={formState.group_name} onChange={handleInputChange} className="mt-1 w-full form-input" />
+              <select name="group_name" value={formState.group_name} onChange={handleInputChange} className="mt-1 w-full form-select">
+                <option value="">(なし)</option>
+                {Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map(char => (
+                  <option key={char} value={char}>{char}</option>
+                ))}
+              </select>
             </div>
             <div className="mb-3 flex gap-4">
                 <div className="flex-1">
