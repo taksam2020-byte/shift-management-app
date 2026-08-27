@@ -204,8 +204,30 @@ export default function ManageEmployeesPage() {
               <input type="password" name="password" value={formState.password} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder={isEditing ? '変更する場合のみ入力' : '初期パスワード'} />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">基本勤務時間 (例: 10:00-17:00)</label>
-              <input type="text" name="default_work_hours" value={formState.default_work_hours} onChange={handleInputChange} className="mt-1 w-full form-input" />
+              <label className="block text-sm font-medium text-gray-700">基本勤務時間</label>
+              <div className="flex items-center mt-1">
+                <input 
+                  type="time" 
+                  value={formState.default_work_hours ? formState.default_work_hours.split('-')[0] : ''}
+                  onChange={(e) => {
+                    const start = e.target.value;
+                    const end = formState.default_work_hours ? formState.default_work_hours.split('-')[1] || '' : '';
+                    setFormState(prev => ({...prev, default_work_hours: start || end ? `${start}-${end}` : ''}));
+                  }}
+                  className="form-input w-full" 
+                />
+                <span className="mx-2">〜</span>
+                <input 
+                  type="time" 
+                  value={formState.default_work_hours && formState.default_work_hours.includes('-') ? formState.default_work_hours.split('-')[1] : ''}
+                  onChange={(e) => {
+                    const end = e.target.value;
+                    const start = formState.default_work_hours ? formState.default_work_hours.split('-')[0] || '' : '';
+                    setFormState(prev => ({...prev, default_work_hours: start || end ? `${start}-${end}` : ''}));
+                  }}
+                  className="form-input w-full" 
+                />
+              </div>
             </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">週の上限時間 (任意)</label>
