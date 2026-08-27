@@ -173,31 +173,35 @@ export default function ManageEmployeesPage() {
           <h2 className="text-xl font-semibold mb-2">{isEditing ? '従業員を編集' : '従業員を追加'}</h2>
           <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow-md">
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">従業員ID</label>
-              <input type="number" name="id" value={formState.id} onChange={handleInputChange} className="mt-1 w-full form-input disabled:bg-gray-200" required disabled={isEditing} />
+              <label className="block text-sm font-medium text-gray-700" title="基幹システムと同じ番号を入力してください。">
+                従業員ID <span className="text-gray-400 cursor-help">(?)</span>
+              </label>
+              <input type="number" name="id" value={formState.id} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full form-input bg-gray-50" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">氏名</label>
-              <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" required />
+              <label className="block text-sm font-medium text-gray-700" title="重複が無ければ名字だけを入力してください。">
+                氏名 <span className="text-gray-400 cursor-help">(?)</span>
+              </label>
+              <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">グループ (A, B, Cなど)</label>
+              <label className="block text-sm font-medium text-gray-700" title="自動シフト作成時、同じ日に同じグループの人ばかりが偏らないように（別グループの人を優先してバランス良く配置するように）分散させるための設定です。例: ホール, キッチン, ベテラン等">
+                グループ (任意) <span className="text-gray-400 cursor-help">(?)</span>
+              </label>
               <input type="text" name="group_name" value={formState.group_name} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">提出区分</label>
-              <select name="request_type" value={formState.request_type} onChange={handleInputChange} className="mt-1 w-full form-select">
-                <option value="holiday">希望休</option>
-                <option value="work">希望出勤</option>
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">時給 (円)</label>
-              <input type="number" name="hourly_wage" value={formState.hourly_wage} onChange={handleInputChange} className="mt-1 w-full form-input" required />
-            </div>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">入社日</label>
-              <input type="date" name="hire_date" value={formState.hire_date} onChange={handleInputChange} className="mt-1 w-full form-input" />
+            <div className="mb-3 flex gap-4">
+                <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">時給</label>
+                    <input type="number" name="hourly_wage" value={formState.hourly_wage} onChange={handleInputChange} className="mt-1 w-full form-input" />
+                </div>
+                <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">提出区分</label>
+                    <select name="request_type" value={formState.request_type} onChange={handleInputChange} className="mt-1 w-full form-select">
+                        <option value="holiday">希望休を提出</option>
+                        <option value="work">希望出勤日を提出</option>
+                    </select>
+                </div>
             </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">パスワード</label>
@@ -214,6 +218,11 @@ export default function ManageEmployeesPage() {
                     const end = formState.default_work_hours ? formState.default_work_hours.split('-')[1] || '' : '';
                     setFormState(prev => ({...prev, default_work_hours: start || end ? `${start}-${end}` : ''}));
                   }}
+                  onFocus={(e) => {
+                    if (!formState.default_work_hours) {
+                      setFormState(prev => ({...prev, default_work_hours: '10:00-17:00'}));
+                    }
+                  }}
                   className="form-input w-full" 
                 />
                 <span className="mx-2">〜</span>
@@ -224,6 +233,11 @@ export default function ManageEmployeesPage() {
                     const end = e.target.value;
                     const start = formState.default_work_hours ? formState.default_work_hours.split('-')[0] || '' : '';
                     setFormState(prev => ({...prev, default_work_hours: start || end ? `${start}-${end}` : ''}));
+                  }}
+                  onFocus={(e) => {
+                    if (!formState.default_work_hours) {
+                      setFormState(prev => ({...prev, default_work_hours: '10:00-17:00'}));
+                    }
                   }}
                   className="form-input w-full" 
                 />
@@ -238,14 +252,14 @@ export default function ManageEmployeesPage() {
               <input type="number" name="max_weekly_days" value={formState.max_weekly_days} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">年収上限 (円, 任意)</label>
-              <input type="number" name="annual_income_limit" value={formState.annual_income_limit} onChange={handleInputChange} className="mt-1 w-full form-input" />
+              <label className="block text-sm font-medium text-gray-700">年収上限 (任意)</label>
+              <input type="number" name="annual_income_limit" value={formState.annual_income_limit} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="例: 1030000" />
             </div>
             <hr className="my-4" />
             <p className="text-sm text-gray-600 mb-2">扶養控除などの計算に利用します。</p>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">今年の初期収入額 (円, 任意)</label>
-              <input type="number" name="initial_income" value={formState.initial_income} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="前職やアプリ導入前の収入"/>
+              <input type="number" name="initial_income" value={formState.initial_income} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="前職の収入など" />
             </div>
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700">初期収入額の対象年</label>
