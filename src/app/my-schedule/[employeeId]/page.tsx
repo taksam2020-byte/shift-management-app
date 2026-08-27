@@ -160,6 +160,13 @@ function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
+    useEffect(() => {
+        if (defaultHours) {
+            setStart(defaultHours.split('-')[0]);
+            setEnd(defaultHours.split('-')[1]);
+        }
+    }, [defaultHours]);
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
