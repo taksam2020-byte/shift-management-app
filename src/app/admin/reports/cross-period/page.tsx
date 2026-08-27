@@ -109,6 +109,11 @@ export default function CrossPeriodReportPage() {
 
   return (
     <div className="container mx-auto p-4">
+      <div className="mb-4">
+        <p className="text-sm text-gray-600 bg-blue-50 border border-blue-100 p-2 rounded inline-block">
+          ※ シミュレーションや概算給与の計算に用いる時給は、期間中に時給が変更された場合でも、その日ごとの当時の時給に基づいて正確に計算されます。（現在の基本時給で一律計算されるわけではありません）
+        </p>
+      </div>
       <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-end gap-4">
         {/* ... control inputs ... */}
         <div className="w-full sm:w-auto">

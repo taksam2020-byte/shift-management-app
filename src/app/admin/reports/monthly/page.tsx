@@ -279,7 +279,7 @@ export default function MonthlyReportPage() {
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{grandTotals.hours > 0 ? grandTotals.hours.toFixed(2) : ''}</td>
               </tr>
               <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2} title="シフト時間と時給から計算した概算です。休憩時間等が一律で引かれているため、実際の支給額とは異なる場合があります。">合計概算給与 <span className="text-gray-500 cursor-help font-normal text-xs">ⓘ</span></td>
+                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2} title="シフト時間と時給から計算した概算です。実際の支給額とは異なる場合があります。">合計概算給与 <span className="text-gray-500 cursor-help font-normal text-xs">ⓘ</span></td>
                 {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
               </tr>

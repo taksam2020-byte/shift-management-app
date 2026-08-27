@@ -50,11 +50,11 @@ export default function ManageEmployeesPage() {
     setIsLoading(true);
     try {
       const response = await fetch('/api/employees?include_inactive=true');
-      if (!response.ok) throw new Error('チE�Eタの取得に失敗しました、E);
+      if (!response.ok) throw new Error('繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆縲・);
       const data = await response.json();
       setEmployees(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '不�Eなエラーが発生しました、E);
+      setError(err instanceof Error ? err.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・);
     } finally {
       setIsLoading(false);
     }
@@ -136,19 +136,19 @@ export default function ManageEmployeesPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '保存に失敗しました、E);
+        throw new Error(errorData.error || '菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆縲・);
       }
       
       clearForm();
       fetchEmployees();
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : '送信中にエラーが発生しました、E);
+      setError(err instanceof Error ? err.message : '騾∽ｿ｡荳ｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・);
     }
   };
 
   const handleDelete = async (employeeId: number) => {
-    if (!window.confirm('こ�E従業員を本当に削除しますか�E�関連するシフト等もすべて削除され、�Eに戻せません、E)) {
+    if (!window.confirm('縺薙・蠕捺･ｭ蜩｡繧呈悽蠖薙↓蜑企勁縺励∪縺吶°・滄未騾｣縺吶ｋ繧ｷ繝輔ヨ遲峨ｂ縺吶∋縺ｦ蜑企勁縺輔ｌ縲∝・縺ｫ謌ｻ縺帙∪縺帙ｓ縲・)) {
         return;
     }
     setError(null);
@@ -157,11 +157,11 @@ export default function ManageEmployeesPage() {
         const response = await fetch(`/api/employees/${employeeId}`, { method: 'DELETE' });
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || '削除に失敗しました、E);
+            throw new Error(errorData.error || '蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲・);
         }
         fetchEmployees();
     } catch (err) {
-        setError(err instanceof Error ? err.message : '削除中にエラーが発生しました、E);
+        setError(err instanceof Error ? err.message : '蜑企勁荳ｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・);
     }
   };
 
@@ -170,26 +170,26 @@ export default function ManageEmployeesPage() {
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
-          <h2 className="text-xl font-semibold mb-2">{isEditing ? '従業員を編雁E : '従業員を追加'}</h2>
+          <h2 className="text-xl font-semibold mb-2">{isEditing ? '蠕捺･ｭ蜩｡繧堤ｷｨ髮・ : '蠕捺･ｭ蜩｡繧定ｿｽ蜉�'}</h2>
           <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow-md">
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700" title="基幹シスチE��と同じ番号を�E力してください、E>
-                従業員ID <span className="text-gray-400 cursor-help">?</span>
+              <label className="block text-sm font-medium text-gray-700" title="蝓ｺ蟷ｹ繧ｷ繧ｹ繝・Β縺ｨ蜷後§逡ｪ蜿ｷ繧貞・蜉帙＠縺ｦ縺上□縺輔＞縲・>
+                蠕捺･ｭ蜩｡ID <span className="text-gray-400 cursor-help">?</span>
               </label>
               <input type="number" name="id" value={formState.id} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full form-input bg-gray-50" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700" title="重褁E��無ければ名字だけを入力してください、E>
-                氏名 <span className="text-gray-400 cursor-help">?</span>
+              <label className="block text-sm font-medium text-gray-700" title="驥崎､・′辟｡縺代ｌ縺ｰ蜷榊ｭ励□縺代ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・>
+                豌丞錐 <span className="text-gray-400 cursor-help">?</span>
               </label>
               <input type="text" name="name" value={formState.name} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700" title="自動シフト作�E時、同じ日に同じグループ�E人ばかりが偏らなぁE��ぁE���E�別グループ�E人を優先してバランス良く�E置するように�E��E散させるため�E設定です、E>
-                グルーチE(任愁E <span className="text-gray-400 cursor-help">?</span>
+              <label className="block text-sm font-medium text-gray-700" title="閾ｪ蜍輔す繝輔ヨ菴懈・譎ゅ∝酔縺俶律縺ｫ蜷後§繧ｰ繝ｫ繝ｼ繝励・莠ｺ縺ｰ縺九ｊ縺悟￥繧峨↑縺・ｈ縺・↓・亥挨繧ｰ繝ｫ繝ｼ繝励・莠ｺ繧貞━蜈医＠縺ｦ繝舌Λ繝ｳ繧ｹ濶ｯ縺城・鄂ｮ縺吶ｋ繧医≧縺ｫ・牙・謨｣縺輔○繧九◆繧√・險ｭ螳壹〒縺吶・>
+                繧ｰ繝ｫ繝ｼ繝・(莉ｻ諢・ <span className="text-gray-400 cursor-help">?</span>
               </label>
               <select name="group_name" value={formState.group_name} onChange={handleInputChange} className="mt-1 w-full form-select">
-                <option value="">(なぁE</option>
+                <option value="">(縺ｪ縺・</option>
                 {Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map(char => (
                   <option key={char} value={char}>{char}</option>
                 ))}
@@ -197,23 +197,23 @@ export default function ManageEmployeesPage() {
             </div>
             <div className="mb-3 flex gap-4">
                 <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">時給</label>
+                    <label className="block text-sm font-medium text-gray-700">譎らｵｦ</label>
                     <input type="number" name="hourly_wage" value={formState.hourly_wage} onChange={handleInputChange} className="mt-1 w-full form-input" />
                 </div>
                 <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700">提�E区刁E/label>
+                    <label className="block text-sm font-medium text-gray-700">謠仙・蛹ｺ蛻・/label>
                     <select name="request_type" value={formState.request_type} onChange={handleInputChange} className="mt-1 w-full form-select">
-                        <option value="holiday">希望休を提�E</option>
-                        <option value="work">希望出勤日を提出</option>
+                        <option value="holiday">蟶梧悍莨代ｒ謠仙・</option>
+                        <option value="work">蟶梧悍蜃ｺ蜍､譌･繧呈署蜃ｺ</option>
                     </select>
                 </div>
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">パスワーチE/label>
-              <input type="password" name="password" value={formState.password} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder={isEditing ? '変更する場合�Eみ入劁E : '初期パスワーチE} />
+              <label className="block text-sm font-medium text-gray-700">繝代せ繝ｯ繝ｼ繝・/label>
+              <input type="password" name="password" value={formState.password} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder={isEditing ? '螟画峩縺吶ｋ蝣ｴ蜷医・縺ｿ蜈･蜉・ : '蛻晄悄繝代せ繝ｯ繝ｼ繝・} />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">基本勤務時閁E/label>
+              <label className="block text-sm font-medium text-gray-700">蝓ｺ譛ｬ蜍､蜍呎凾髢・/label>
               <div className="flex items-center mt-1">
                 <input 
                   type="time" 
@@ -230,7 +230,7 @@ export default function ManageEmployeesPage() {
                   }}
                   className="form-input w-full" 
                 />
-                <span className="mx-2">、E/span>
+                <span className="mx-2">縲・/span>
                 <input 
                   type="time" 
                   value={formState.default_work_hours && formState.default_work_hours.includes('-') ? formState.default_work_hours.split('-')[1] : ''}
@@ -249,59 +249,58 @@ export default function ManageEmployeesPage() {
               </div>
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">週の上限時間 (任愁E</label>
+              <label className="block text-sm font-medium text-gray-700">騾ｱ縺ｮ荳企剞譎る俣 (莉ｻ諢・</label>
               <input type="number" name="max_weekly_hours" value={formState.max_weekly_hours} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">週の上限日数 (任愁E</label>
+              <label className="block text-sm font-medium text-gray-700">騾ｱ縺ｮ荳企剞譌･謨ｰ (莉ｻ諢・</label>
               <input type="number" name="max_weekly_days" value={formState.max_weekly_days} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">年収上限 (任愁E</label>
-              <input type="number" name="annual_income_limit" value={formState.annual_income_limit} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="侁E 1030000" />
+              <label className="block text-sm font-medium text-gray-700">蟷ｴ蜿惹ｸ企剞 (莉ｻ諢・</label>
+              <input type="number" name="annual_income_limit" value={formState.annual_income_limit} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="萓・ 1030000" />
             </div>
             <hr className="my-4" />
-            <p className="text-sm text-gray-600 mb-2">扶養控除などの計算に利用します、E/p>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">今年の初期収�E顁E(冁E 任愁E</label>
-              <input type="number" name="initial_income" value={formState.initial_income} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="前�Eの収�Eなど" />
+              <label className="block text-sm font-medium text-gray-700" title="年収上限に収めるためのシミュレーションに利用します。">今年の初期収入額 (円, 任意) <span className="text-gray-400 cursor-help font-normal">ⓘ</span></label>
+              <input type="number" name="initial_income" value={formState.initial_income} onChange={handleInputChange} className="mt-1 w-full form-input" placeholder="前職の収入など" />
             </div>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">初期収�E額�E対象年</label>
+              <label className="block text-sm font-medium text-gray-700">蛻晄悄蜿主・鬘阪・蟇ｾ雎｡蟷ｴ</label>
               <input type="number" name="initial_income_year" value={formState.initial_income_year} onChange={handleInputChange} className="mt-1 w-full form-input" />
             </div>
             
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">在籍状況E/label>
+              <label className="block text-sm font-medium text-gray-700">蝨ｨ邀咲憾豕・/label>
               <select name="is_active" value={String(formState.is_active)} onChange={handleInputChange} className="mt-1 w-full form-select bg-gray-50 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                <option value="true">在籍中 (有効)</option>
-                <option value="false">退職渁E(非表示)</option>
+                <option value="true">蝨ｨ邀堺ｸｭ (譛牙柑)</option>
+                <option value="false">騾閨ｷ貂・(髱櫁｡ｨ遉ｺ)</option>
               </select>
             </div>
             
             <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">{isEditing ? '更新' : '追加'}</button>
-                {isEditing && <button type="button" onClick={clearForm} className="flex-1 bg-gray-300 py-2 px-4 rounded-md hover:bg-gray-400">クリア</button>}
+                <button type="submit" className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">{isEditing ? '譖ｴ譁ｰ' : '霑ｽ蜉�'}</button>
+                {isEditing && <button type="button" onClick={clearForm} className="flex-1 bg-gray-300 py-2 px-4 rounded-md hover:bg-gray-400">繧ｯ繝ｪ繧｢</button>}
             </div>
             {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
           </form>
         </div>
 
         <div className="lg:col-span-2">
-          <h2 className="text-xl font-semibold mb-2">従業員一覧 (クリチE��して編雁E</h2>
+          <h2 className="text-xl font-semibold mb-2">蠕捺･ｭ蜩｡荳隕ｧ (繧ｯ繝ｪ繝・け縺励※邱ｨ髮・</h2>
           <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-            {isLoading ? <p className="p-4">読み込み中...</p> : (
+            {isLoading ? <p className="p-4">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p> : (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">ID</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">氏名</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">在籍状況E/th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">グルーチE/th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">提�E区刁E/th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週時間</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">週日数</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">年収上限</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">豌丞錐</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">蝨ｨ邀咲憾豕・/th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">繧ｰ繝ｫ繝ｼ繝・/th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">謠仙・蛹ｺ蛻・/th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">騾ｱ譎る俣</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">騾ｱ譌･謨ｰ</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">蟷ｴ蜿惹ｸ企剞</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-500"></th>
                   </tr>
                 </thead>
@@ -311,15 +310,15 @@ export default function ManageEmployeesPage() {
                       <td onClick={() => handleSelectEmployee(emp)} className="px-2 py-2 cursor-pointer">{emp.id}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.name}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">
-                          {emp.is_active === false ? <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded">退職渁E/span> : <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">在籍中</span>}
+                          {emp.is_active === false ? <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded">騾閨ｷ貂・/span> : <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">蝨ｨ邀堺ｸｭ</span>}
                       </td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.group_name || '-'}</td>
-                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.request_type === 'work' ? '希望出勤' : '希望企E}</td>
+                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.request_type === 'work' ? '蟶梧悍蜃ｺ蜍､' : '蟶梧悍莨・}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_hours || '-'}</td>
                       <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.max_weekly_days || '-'}</td>
-                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.annual_income_limit ? `¥${emp.annual_income_limit.toLocaleString()}` : '-'}</td>
+                      <td onClick={() => handleSelectEmployee(emp)} className="px-4 py-2 whitespace-nowrap cursor-pointer">{emp.annual_income_limit ? `ﾂ･${emp.annual_income_limit.toLocaleString()}` : '-'}</td>
                       <td className="px-2 py-2 text-center">
-                        <button onClick={() => handleDelete(emp.id)} className="text-red-600 hover:text-red-800 text-xs">削除</button>
+                        <button onClick={() => handleDelete(emp.id)} className="text-red-600 hover:text-red-800 text-xs">蜑企勁</button>
                       </td>
                     </tr>
                   ))}
