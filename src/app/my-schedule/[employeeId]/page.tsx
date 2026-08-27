@@ -71,7 +71,10 @@ function ShiftRow({
     onSave, 
     isAdmin, 
     onDelete,
-    isHolidayRequest
+    isHolidayRequest,
+    isChecked,
+    onCheck,
+    onDeleteActual
 }: { 
     shift: Shift, 
     actuals: { actual_start_time: string; actual_end_time: string; break_hours: number; } | undefined,
@@ -79,7 +82,7 @@ function ShiftRow({
     onSave: (shiftId: number) => Promise<void>,
     isAdmin: boolean,
     onDelete: (shiftId: number) => Promise<void>,
-    isHolidayRequest?: boolean
+    isHolidayRequest?: boolean,
     isChecked: boolean,
     onCheck: (shiftId: number, checked: boolean) => void,
     onDeleteActual?: (shiftId: number) => Promise<void>
