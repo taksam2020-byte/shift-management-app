@@ -582,47 +582,47 @@ export default function MySchedulePage() {
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
-      {loggedInUser?.isAdmin && (
-        <div className="sticky top-0 z-10 pt-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 bg-gray-50">
+      <div className="sticky top-0 z-10 pt-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 bg-gray-50 border-b border-gray-200 shadow-sm mb-6">
+        <p className="text-xl mb-4 text-center text-gray-800 font-bold">{employee?.name} さん</p>
+
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded font-semibold transition-colors">前月</button>
+          <h2 className="text-xl font-bold">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</h2>
+          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded font-semibold transition-colors">次月</button>
+        </div>
+
+        {loggedInUser?.isAdmin && (
           <div className="bg-blue-50 p-4 rounded-lg shadow-md border border-blue-200 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-            <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
-            <select
-              value={employeeId}
-              onChange={(e) => router.push(`/my-schedule/${e.target.value}`)}
-              className="form-select rounded border-gray-300 py-1 px-3 bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              {employeesList.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleToggleSelectAll}
-              className="ml-3 py-1.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-xs font-bold shadow-sm transition-colors"
-            >
-              {selectedActuals.size > 0 ? '全選択を解除' : 'すべて選択'}
-            </button>
-            <button
-              onClick={handleSaveAllActuals}
-              disabled={isSavingAll || shifts.filter(s => s.start_time).length === 0}
-              className="ml-3 py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-colors disabled:bg-gray-400"
-            >
-              {isSavingAll ? '保存中...' : '実績を一括保存する'}
-            </button>
+              <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
+              <select
+                value={employeeId}
+                onChange={(e) => router.push(`/my-schedule/${e.target.value}`)}
+                className="form-select rounded border-gray-300 py-1 px-3 bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                {employeesList.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleToggleSelectAll}
+                className="ml-3 py-1.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-xs font-bold shadow-sm transition-colors"
+              >
+                {selectedActuals.size > 0 ? '全選択を解除' : 'すべて選択'}
+              </button>
+              <button
+                onClick={handleSaveAllActuals}
+                disabled={isSavingAll || shifts.filter(s => s.start_time).length === 0}
+                className="ml-3 py-1.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-sm transition-colors disabled:bg-gray-400"
+              >
+                {isSavingAll ? '保存中...' : '実績を一括保存する'}
+              </button>
+            </div>
+            <Link href="/admin/schedule" className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+              ← 管理者画面に戻る
+            </Link>
           </div>
-          <Link href="/admin/schedule" className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
-            ← 管理者画面に戻る
-          </Link>
-          </div>
-        </div>
-      )}
-
-      <p className="text-xl mb-6 text-center text-gray-600">{employee?.name} さん</p>
-
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">前月</button>
-        <h2 className="text-xl font-semibold">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</h2>
-        <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-4 py-2 bg-gray-200 rounded">次月</button>
+        )}
       </div>
 
       <ul className="space-y-4">
