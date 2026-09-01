@@ -21,9 +21,10 @@ interface CrossPeriodReport {
 const getInitialMonths = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
+    const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
     return {
         start: `${currentYear}-01`,
-        end: `${currentYear}-12`
+        end: `${currentYear}-${currentMonth}`
     };
 };
 
