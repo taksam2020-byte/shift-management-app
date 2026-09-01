@@ -48,6 +48,13 @@ const parseHours = (startStr: string, endStr: string, breakHours: number = 0): n
 };
 
 export default function MonthlyReportPage() {
+  const [user, setUser] = useState<{ isViewer?: boolean } | null>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('loggedInUser');
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
+
   // --- State ---
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [closingDay, setClosingDay] = useState('31');
@@ -278,11 +285,13 @@ export default function MonthlyReportPage() {
                 {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{employeeTotals[emp.id]?.hours.toFixed(2) || ''}</td>)}
                 <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">{grandTotals.hours > 0 ? grandTotals.hours.toFixed(2) : ''}</td>
               </tr>
-              <tr>
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2} title="シフト時間と時給から計算した概算です。実際の支給額とは異なる場合があります。">合計概算給与 <span className="text-gray-500 cursor-help font-normal text-xs">ⓘ</span></td>
-                {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
-                <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
-              </tr>
+              {!user?.isViewer && (
+                <tr>
+                  <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-right sticky left-0 bg-gray-100" colSpan={2} title="シフト時間と時給から計算した概算です。実際の支給額とは異なる場合があります。">合計概算給与 <span className="text-gray-500 cursor-help font-normal text-xs">ⓘ</span></td>
+                  {employees.map(emp => <td key={emp.id} style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(employeeTotals[emp.id]?.salary || 0).toLocaleString()}</td>)}
+                  <td style={{ border: '1px solid #d1d5db' }} className="p-1 text-center">￥{Math.round(grandTotals.salary).toLocaleString()}</td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>

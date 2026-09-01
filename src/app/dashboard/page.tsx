@@ -111,6 +111,10 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold">{requestLinkText}</h2>
               <p>{requestLinkDesc}</p>
             </Link>
+            <Link href="/employee/reports" className="block p-6 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors">
+              <h2 className="text-xl font-bold">マイレポート</h2>
+              <p>自分の月間・年間実績を集計して確認します。</p>
+            </Link>
             <Link href="/schedule/view" className="block p-6 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition-colors">
               <h2 className="text-xl font-bold">全体シフト確認</h2>
               <p>全員のシフトを閲覧します。</p>

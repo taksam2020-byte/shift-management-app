@@ -44,6 +44,13 @@ const getPeriodDates = (monthStr: string, closingDay: string) => {
 };
 
 export default function CrossPeriodReportPage() {
+  const [user, setUser] = useState<{ isViewer?: boolean } | null>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('loggedInUser');
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
+
   const [closingDay, setClosingDay] = useState('31');
   const [months, setMonths] = useState(() => getInitialMonths(closingDay));
   const [reportData, setReportData] = useState<CrossPeriodReport | null>(null);
@@ -141,7 +148,7 @@ export default function CrossPeriodReportPage() {
             <select value={displayMode} onChange={(e) => setDisplayMode(e.target.value as DisplayMode)} className="mt-1 block w-full form-select">
                 <option value="hours">勤務時間</option>
                 <option value="days">勤務日数</option>
-                <option value="pay">概算給与</option>
+                {!user?.isViewer && <option value="pay">概算給与</option>}
             </select>
         </div>
       </div>
