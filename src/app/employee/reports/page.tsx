@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,8 +22,8 @@ const getInitialMonths = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
     return {
-        start: ${currentYear}-01,
-        end: ${currentYear}-12
+        start: `${currentYear}-01`,
+        end: `${currentYear}-12`
     };
 };
 
@@ -59,7 +59,7 @@ export default function EmployeeReportPage() {
                 useSchedule: 'false',
                 includeInactive: 'true',
             });
-            const response = await fetch(/api/reports/cross-period?${params.toString()});
+            const response = await fetch(`/api/reports/cross-period?${params.toString()}`);
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'レポートの生成に失敗しました。');
