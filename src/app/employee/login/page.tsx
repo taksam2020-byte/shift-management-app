@@ -35,7 +35,12 @@ export default function EmployeeLoginPage() {
           const data = await response.json();
           setEmployees(data);
           if (data.length > 0) {
-            setSelectedEmployeeId(String(data[0].id));
+            const lastId = localStorage.getItem('lastEmployeeId');
+            if (lastId && data.some((e: Employee) => String(e.id) === lastId)) {
+                setSelectedEmployeeId(lastId);
+            } else {
+                setSelectedEmployeeId(String(data[0].id));
+            }
           }
         } catch (err) {
           setError(err instanceof Error ? err.message : '不明なエラー');
@@ -74,6 +79,7 @@ export default function EmployeeLoginPage() {
             localStorage.setItem('authToken', data.token);
         }
         localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+        localStorage.setItem('lastEmployeeId', selectedEmployeeId); // 最後にログインしたIDを記憶
         // Instead of pushing, we reload the page. AuthProvider will handle the redirect.
         window.location.href = '/dashboard';
 
