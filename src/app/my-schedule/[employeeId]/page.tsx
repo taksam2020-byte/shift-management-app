@@ -89,13 +89,13 @@ function ShiftRow({
 }) {
     const actualStart = actuals?.actual_start_time || '';
     const actualEnd = actuals?.actual_end_time || '';
-    const breakHours = actuals?.break_hours ?? 1;
+    const breakHours = Number(actuals?.break_hours ?? 1);
 
     const canEdit = isPast(parseISO(shift.date)) || isAdmin; // 管理者は常に編集可能
     const isSaved = !!shift.actual_id;
     const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][getDay(parseISO(shift.date))];
 
-    const workDuration = calculateDuration(actualStart, actualEnd) - breakHours;
+    const workDuration = calculateDuration(actualStart, actualEnd) - (isNaN(breakHours) ? 0 : breakHours);
 
     const handleTimeChange = (part: 'start' | 'end', newTime: string) => {
         onChange(shift.id, part === 'start' ? 'actual_start_time' : 'actual_end_time', newTime);
@@ -108,7 +108,8 @@ function ShiftRow({
 
     const handleBreakChange = (delta: number) => {
         if (!canEdit) return;
-        const newBreak = Math.max(0, breakHours + delta);
+        const currentBreak = isNaN(breakHours) ? 0 : breakHours;
+        const newBreak = Math.max(0, currentBreak + delta);
         onChange(shift.id, 'break_hours', newBreak);
     };
 
@@ -157,8 +158,11 @@ function ShiftRow({
                         <input 
                             type="number"
                             step="0.25"
-                            value={breakHours}
-                            onChange={(e) => onChange(shift.id, 'break_hours', parseFloat(e.target.value) || 0)}
+                            value={isNaN(breakHours) ? '' : breakHours}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                onChange(shift.id, 'break_hours', isNaN(val) ? 0 : val);
+                            }}
                             className="w-10 sm:w-12 text-center text-sm border-0 focus:ring-0 p-0 sm:p-1 bg-transparent"
                             disabled={!canEdit}
                         />
@@ -429,7 +433,7 @@ export default function MySchedulePage() {
                 initialActuals[s.id] = {
                     actual_start_time: s.actual_start_time?.substring(0, 5) || s.start_time?.substring(0, 5) || '',
                     actual_end_time: s.actual_end_time?.substring(0, 5) || s.end_time?.substring(0, 5) || '',
-                    break_hours: s.break_hours ?? 1
+                    break_hours: s.break_hours !== null && s.break_hours !== undefined ? Number(s.break_hours) : 1
                 };
             });
             setActualsState(initialActuals);

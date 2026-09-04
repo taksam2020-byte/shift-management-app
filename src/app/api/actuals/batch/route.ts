@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       }
 
       const hourly_wage = shiftRes.rows[0].hourly_wage;
+      const parsedBreak = Number(break_hours);
+      const breakHoursToSave = (!isNaN(parsedBreak) && parsedBreak >= 0) ? parsedBreak : 0;
 
       // すでに actual_work_hours が存在するかチェック
       const existingRes = await query(
@@ -47,14 +49,14 @@ export async function POST(request: Request) {
           `UPDATE actual_work_hours 
            SET actual_start_time = $1, actual_end_time = $2, break_hours = $3, hourly_wage = $4
            WHERE shift_id = $5`,
-          [actual_start_time || null, actual_end_time || null, break_hours, hourly_wage, shift_id]
+          [actual_start_time || null, actual_end_time || null, breakHoursToSave, hourly_wage, shift_id]
         );
       } else {
         // 新規登録
         await query(
           `INSERT INTO actual_work_hours (shift_id, actual_start_time, actual_end_time, break_hours, hourly_wage)
            VALUES ($1, $2, $3, $4, $5)`,
-          [shift_id, actual_start_time || null, actual_end_time || null, break_hours, hourly_wage]
+          [shift_id, actual_start_time || null, actual_end_time || null, breakHoursToSave, hourly_wage]
         );
       }
       count++;

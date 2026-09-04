@@ -11,7 +11,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Shift ID and start/end times are required' }, { status: 400 });
     }
 
-    const breakHoursToSave = (typeof break_hours === 'number' && break_hours >= 0) ? break_hours : 1;
+    const parsedBreak = Number(break_hours);
+    const breakHoursToSave = (!isNaN(parsedBreak) && parsedBreak >= 0) ? parsedBreak : 1;
 
     // 1. Get employee_id from shift_id
     const shiftResult = await query('SELECT employee_id FROM shifts WHERE id = $1', [shift_id]);
