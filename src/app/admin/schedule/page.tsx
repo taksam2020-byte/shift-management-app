@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import ShiftInput from '@/components/ShiftInput';
+import { useToast } from '@/components/Toast';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { calcDuration, shiftStringHours } from '@/lib/worktime';
 
 // --- Type Definitions ---
@@ -75,7 +77,10 @@ export default function SchedulePage() {
   const [validationErrors, setValidationErrors] = useState<ValidationErrorState>({});
   const [annualIncomes, setAnnualIncomes] = useState<AnnualIncomeState>({});
   const [isLoading, setIsLoading] = useState(true);
+  // 保存中・自動作成中（表は表示したまま、ボタンだけ押せなくする）
+  const [busy, setBusy] = useState<'saving' | 'generating' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const showToast = useToast();
   // 自動作成のとき、今入っているシフトを残して空き枠だけ埋めるか
   const [keepExisting, setKeepExisting] = useState(true);
 
@@ -301,9 +306,33 @@ export default function SchedulePage() {
     setDailyNotes(prev => ({ ...prev, [date]: value }));
   };
 
+  // 保存していない変更の数（シフトのマスと備考）
+  const unsavedCount = useMemo(() => {
+    let count = 0;
+    const allDates = new Set([...Object.keys(schedule), ...Object.keys(initialSchedule)]);
+    allDates.forEach(date => {
+      const current = schedule[date] || {};
+      const initial = initialSchedule[date] || {};
+      new Set([...Object.keys(current), ...Object.keys(initial)]).forEach(id => {
+        if ((current[Number(id)] || '') !== (initial[Number(id)] || '')) count++;
+      });
+    });
+    Object.entries(dailyNotes).forEach(([date, note]) => {
+      if (note !== (initialDailyNotes[date] || '')) count++;
+    });
+    return count;
+  }, [schedule, initialSchedule, dailyNotes, initialDailyNotes]);
+  const confirmDiscard = useUnsavedChanges(unsavedCount > 0);
+
+  const changeMonth = (diff: number) => {
+    if (!confirmDiscard()) return;
+    setCurrentDate(prev => (diff > 0 ? addMonths(prev, diff) : subMonths(prev, -diff)));
+  };
+
       const handleSave = async (force = false) => {
-        if (isLoading && !force) return;
-        setIsLoading(true);
+        if (busy && !force) return;
+        setBusy('saving');
+        let retryWithForce = false;
         try {
           const shiftsToSave: Omit<Shift, 'id'>[] = [];
           const allDates = new Set([...Object.keys(schedule), ...Object.keys(initialSchedule)]);
@@ -328,8 +357,7 @@ export default function SchedulePage() {
             .map(([date, note]) => ({ date: date.substring(0, 10), note }));
     
           if (shiftsToSave.length === 0 && notesToSave.length === 0) {
-            alert("変更点がありません。");
-            setIsLoading(false);
+            showToast('変更点はありません。', 'info');
             return;
           }
     
@@ -362,22 +390,21 @@ export default function SchedulePage() {
             await Promise.all(noteSavePromises);
           }
     
-          alert('シフトと備考を保存しました。');
+          showToast('シフトと備考を保存しました。');
           setInitialSchedule(schedule);
           setInitialDailyNotes(dailyNotes);
     
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
           if (errorMessage.includes('実績が入力済みのシフト')) {
-            if (window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？')) {
-              handleSave(true);
-            }
+            retryWithForce = window.confirm('実績が入力済みのシフトが含まれています。実績を削除した上で変更を保存しますか？');
           } else {
-            alert(errorMessage);
+            showToast(errorMessage, 'error');
           }
         } finally {
-          setIsLoading(false);
+          setBusy(null);
         }
+        if (retryWithForce) await handleSave(true);
       };  
       
   const handleGenerateSchedule = async () => {
@@ -385,8 +412,7 @@ export default function SchedulePage() {
         ? '今入っているシフトは残したまま、空いている所だけ自動で割り当てます。よろしいですか？'
         : 'この月のシフトをすべて作り直します。手で入力した内容も上書きされます。よろしいですか？';
     if (!window.confirm(message)) return;
-    setIsLoading(true);
-    setError(null);
+    setBusy('generating');
     try {
         const { start, end } = getPayPeriodInterval(currentDate);
         const response = await fetch('/api/shifts/generate-schedule', {
@@ -421,9 +447,9 @@ export default function SchedulePage() {
         validateSchedule(newSchedule, employees);
 
     } catch (err) {
-        alert(err instanceof Error ? err.message : '自動作成中にエラーが発生しました。');
+        showToast(err instanceof Error ? err.message : '自動作成中にエラーが発生しました。', 'error');
     } finally {
-        setIsLoading(false);
+        setBusy(null);
     }
   };
 
@@ -448,22 +474,25 @@ export default function SchedulePage() {
   return (
     <div className="p-2 flex flex-col h-full">
       <div className="flex-shrink-0 mb-2">
-        <div className="relative flex flex-wrap items-center justify-center bg-white p-2 rounded shadow-sm gap-2 min-h-[48px]">
-          {/* 中央: 月切替 */}
+        <div className="flex flex-wrap items-center justify-between bg-white p-2 rounded shadow-sm gap-2 min-h-[48px]">
+          {/* 左: 月切替 */}
           <div className="flex items-center gap-2">
-            <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">前月</button>
+            <button onClick={() => changeMonth(-1)} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">前月</button>
             <h2 className="text-base font-semibold whitespace-nowrap">{format(currentDate, 'yyyy年 M月')} <span className="text-sm font-normal text-gray-500">({format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')})</span></h2>
-            <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">次月</button>
+            <button onClick={() => changeMonth(1)} className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition-colors">次月</button>
           </div>
-          
-          {/* 右側: アクションボタン */}
-          <div className="absolute right-2 flex items-center gap-2">
+
+          {/* 右: アクションボタン（狭い画面では下の行に折り返す） */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {unsavedCount > 0 && (
+              <span className="text-xs font-bold text-yellow-800 bg-yellow-100 border border-yellow-300 rounded px-2 py-1">未保存の変更 {unsavedCount} 件</span>
+            )}
             <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer" title="チェックを入れると、今入っているシフト（未保存の編集も含む）を残して空いている所だけ自動で埋めます。外すと月全体を作り直します。">
               <input type="checkbox" checked={keepExisting} onChange={(e) => setKeepExisting(e.target.checked)} className="h-3.5 w-3.5" />
               既存シフトを残す <span className="text-gray-400">ⓘ</span>
             </label>
-            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="従業員の希望や週・年間の上限を考慮して、システムが自動的にシフトを割り当てます。">仮シフト割当 <span className="font-normal text-green-200">ⓘ</span></button>
-            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="作成・変更したシフトと備考をデータベースに保存します。">シフト保存 <span className="font-normal text-blue-200">ⓘ</span></button>
+            <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={!!busy} title="従業員の希望や週・年間の上限を考慮して、システムが自動的にシフトを割り当てます。">{busy === 'generating' ? '割当中…' : '仮シフト割当'} <span className="font-normal text-green-200">ⓘ</span></button>
+            <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={!!busy} title="作成・変更したシフトと備考をデータベースに保存します。">{busy === 'saving' ? '保存中…' : 'シフト保存'} <span className="font-normal text-blue-200">ⓘ</span></button>
           </div>
         </div>
       </div>
@@ -471,7 +500,7 @@ export default function SchedulePage() {
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 shadow-[0_2px_10px_rgba(0,0,0,0.1)]">
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 w-28 bg-gray-100">日付</th>
+              <th className="border border-gray-300 p-2 w-28 bg-gray-100 sticky left-0 z-20 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.2)]">日付</th>
               <th className="border border-gray-300 p-2 w-24 bg-gray-100">備考</th>
               <th className="border border-gray-300 p-2 bg-gray-100">人数</th>
               {employees.map((emp) => <th key={emp.id} className="border border-gray-300 p-2 whitespace-nowrap text-center align-middle min-w-[90px] bg-gray-100">{emp.name}</th>)}
@@ -489,8 +518,8 @@ export default function SchedulePage() {
               const dailyTotalHours = Object.values(dailyShifts).reduce((acc, time) => acc + parseShiftTime(time, true), 0);
 
               return (
-                <tr key={dateStr} className={isWeekendOrHoliday ? 'bg-gray-200' : ''}>
-                  <td className={`border border-gray-300 p-2 whitespace-nowrap text-center w-28 ${isWeekendOrHoliday ? 'font-semibold text-red-600' : ''}`}>{format(day, 'M/d')} ({dayOfWeek})</td>
+                <tr key={dateStr} className={isWeekendOrHoliday ? 'bg-gray-200' : 'bg-white'}>
+                  <td className={`border border-gray-300 p-2 whitespace-nowrap text-center w-28 sticky left-0 z-[5] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.2)] ${isWeekendOrHoliday ? 'font-semibold text-red-600 bg-gray-200' : 'bg-white'}`}>{format(day, 'M/d')} ({dayOfWeek})</td>
                   <td className="border border-gray-300 w-24"><input type="text" value={dailyNotes[dateStr] || holiday?.name || ''} onChange={(e) => handleNoteChange(dateStr, e.target.value)} disabled={!!holiday} className={`w-full p-1 bg-transparent focus:outline-none focus:bg-white text-center ${isWeekendOrHoliday ? 'text-red-600' : ''} ${!!holiday ? 'cursor-not-allowed' : ''}`}/></td>
                   <td className="border border-gray-300 p-2 text-center">{headcount > 0 ? headcount : ''}</td>
                   {employees.map((emp) => {
@@ -517,7 +546,7 @@ export default function SchedulePage() {
           </tbody>
           <tfoot className="bg-gray-50 sticky bottom-0 z-10 border-t-2 border-gray-400 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
             <tr className="bg-gray-50">
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3} title="年間の残り枠から逆算した今月の推奨時間と消化率です">今月の稼働 (時間) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 z-20 bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.2)]" colSpan={3} title="年間の残り枠から逆算した今月の推奨時間と消化率です">今月の稼働 (時間) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
                     const budgetHours = annualIncomes[emp.id]?.thisMonthBudgetHours || 0;
                     const scheduledHours = totalsByEmployee[emp.id] || 0;
@@ -542,7 +571,7 @@ export default function SchedulePage() {
                 <td className="border border-gray-300 p-2"></td>
             </tr>
             <tr className="bg-gray-50">
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-50" colSpan={3} title="年間の残り枠から逆算した今月の推奨日数と消化率です">今月の稼働 (日数) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 z-20 bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.2)]" colSpan={3} title="年間の残り枠から逆算した今月の推奨日数と消化率です">今月の稼働 (日数) <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
                     const budgetDays = annualIncomes[emp.id]?.thisMonthBudgetDays || 0;
                     const scheduledDays = annualIncomes[emp.id]?.thisMonthScheduledDays || 0;
@@ -567,7 +596,7 @@ export default function SchedulePage() {
                 <td className="border border-gray-300 p-2"></td>
             </tr>
             <tr className="bg-gray-100">
-                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 bg-gray-100" colSpan={3} title="年間の上限時間に対する現在（予定込）の消化状況です。縦線は経過月数による適正ペースを表します。">年間の消化状況 <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
+                <td className="border border-gray-300 p-2 font-bold text-right sticky left-0 z-20 bg-gray-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.2)]" colSpan={3} title="年間の上限時間に対する現在（予定込）の消化状況です。縦線は経過月数による適正ペースを表します。">年間の消化状況 <span className="text-xs font-normal text-gray-500">ⓘ</span></td>
                 {employees.map(emp => {
                     const totalHours = annualIncomes[emp.id]?.annualTotalHours || 0;
                     const scheduledHours = annualIncomes[emp.id]?.annualScheduledHours || 0;
@@ -585,7 +614,7 @@ export default function SchedulePage() {
                                     </div>
                                     <div className="w-full bg-gray-300 rounded-full h-2 mx-auto relative overflow-hidden">
                                         <div className={`h-2 rounded-full ${isOver ? 'bg-red-500' : (isFastPace ? 'bg-yellow-500' : 'bg-green-500')}`} style={{ width: `${percent}%` }}></div>
-                                        <div className="absolute top-0 bottom-0 border-l-2 border-red-600" style={{ left: `${targetPercent}%`, zIndex: 10 }}></div>
+                                        <div className="absolute top-0 bottom-0 border-l-2 border-red-600" style={{ left: `${targetPercent}%`, zIndex: 1 }}></div>
                                     </div>
                                 </div>
                             ) : '-'}

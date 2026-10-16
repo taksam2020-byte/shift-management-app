@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ToastProvider } from "@/components/Toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,12 +20,14 @@ export default function RootLayout({
   return (
     <html lang="ja" className="h-full bg-gray-50">
       <body className={`${inter.className} h-full flex flex-col`}>
-        <AuthProvider>
-          <Header />
-          <main className="flex-grow overflow-y-auto">
-            {children}
-          </main>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Header />
+            <main className="flex-grow overflow-y-auto">
+              {children}
+            </main>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

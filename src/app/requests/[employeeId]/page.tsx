@@ -6,6 +6,8 @@ import { format, parseISO, startOfToday, addMonths, subMonths, isSameDay } from 
 import { ja } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { useToast } from '@/components/Toast';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 // --- Type Definitions ---
 interface ShiftRequest { id: number; date: string; request_type: 'holiday' | 'work'; }
@@ -27,6 +29,8 @@ export default function RequestShiftPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showToast = useToast();
+  useUnsavedChanges(isDirty);
 
   useEffect(() => {
     const fetchPageData = async () => {
@@ -140,7 +144,7 @@ export default function RequestShiftPage() {
       setExistingRequests(reqData);
       setSelectedDays(reqData.map((r: ShiftRequest) => parseISO(r.date)));
       setIsDirty(false); // Reset dirty state after successful submission
-      alert('希望を更新しました。');
+      showToast('希望を更新しました。');
 
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新中にエラーが発生しました。');

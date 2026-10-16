@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useMemo, useCallback } from 'react';
+import { useState, useEffect, FormEvent, useMemo, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, isPast, getDay, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import ActualsInput from '@/components/ActualsInput';
+import ActualsInput, { stepButtonClass } from '@/components/ActualsInput';
+import { useToast } from '@/components/Toast';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import Link from 'next/link';
 import { calcDuration, defaultBreakHours } from '@/lib/worktime';
+
+type ActualValues = { actual_start_time: string; actual_end_time: string; break_hours: number; };
+
+const sameActual = (a?: ActualValues, b?: ActualValues) =>
+  !!a && !!b && a.actual_start_time === b.actual_start_time && a.actual_end_time === b.actual_end_time && Number(a.break_hours) === Number(b.break_hours);
 
 // --- Type Definitions ---
 interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
@@ -66,10 +73,11 @@ function ShiftRow({
     isHolidayRequest,
     isChecked,
     onCheck,
-    onDeleteActual
+    onDeleteActual,
+    isEdited
 }: { 
     shift: Shift, 
-    actuals: { actual_start_time: string; actual_end_time: string; break_hours: number; } | undefined,
+    actuals: ActualValues | undefined,
     onChange: (shiftId: number, field: 'actual_start_time' | 'actual_end_time' | 'break_hours', value: string | number) => void,
     onSave: (shiftId: number) => Promise<void>,
     isAdmin: boolean,
@@ -77,7 +85,8 @@ function ShiftRow({
     isHolidayRequest?: boolean,
     isChecked: boolean,
     onCheck: (shiftId: number, checked: boolean) => void,
-    onDeleteActual?: (shiftId: number) => Promise<void>
+    onDeleteActual?: (shiftId: number) => Promise<void>,
+    isEdited: boolean
 }) {
     const actualStart = actuals?.actual_start_time || '';
     const actualEnd = actuals?.actual_end_time || '';
@@ -106,7 +115,8 @@ function ShiftRow({
     };
 
     return (
-        <li className={`p-3 sm:p-4 bg-white rounded-lg shadow-md ${isSaved ? 'bg-green-50' : ''}`}>
+        <li className={`p-3 sm:p-4 rounded-lg shadow-md ${isEdited ? 'bg-yellow-50 ring-2 ring-yellow-300' : isSaved ? 'bg-green-50' : 'bg-white'}`}>
+            {isEdited && <p className="text-xs font-bold text-yellow-700 mb-1">未保存の変更があります</p>}
             <div className="flex items-center w-full mb-2">
                 {isAdmin && (
                     <input 
@@ -119,18 +129,18 @@ function ShiftRow({
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-2">
                         <p className="text-base sm:text-lg font-bold">{format(parseISO(shift.date), 'M月d日')} <span className="text-sm font-normal text-gray-600">({dayOfWeek})</span></p>
-                        {isHolidayRequest && <span className="text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">休み希望</span>}
+                        {isHolidayRequest && <span className="text-xs font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">休み希望</span>}
                         {isAdmin && (
                             <button
                                 type="button"
                                 onClick={() => onDelete(shift.id)}
-                                className="py-0.5 px-2 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-semibold hover:bg-red-100 transition-colors"
+                                className="py-1 px-2 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-100 transition-colors"
                             >
                                 予定を削除
                             </button>
                         )}
                     </div>
-                    <p className="text-[11px] sm:text-sm text-gray-500 whitespace-nowrap ml-2">予: {shift.start_time?.substring(0, 5) || ''}-{shift.end_time?.substring(0, 5) || ''}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 whitespace-nowrap ml-2">予定 {shift.start_time?.substring(0, 5) || ''}-{shift.end_time?.substring(0, 5) || ''}</p>
                 </div>
             </div>
             <form onSubmit={handleSave} className={`flex flex-wrap items-center sm:items-end gap-3 w-full mt-2 ${isAdmin ? 'pl-8' : ''}`}>
@@ -144,9 +154,9 @@ function ShiftRow({
                 </div>
                 <div className="flex-1 flex justify-between sm:justify-start items-center gap-4 sm:gap-6 border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
                   <div className="flex items-center gap-1.5">
-                      <label className="text-xs font-medium text-gray-500">休憩</label>
+                      <label className="text-xs font-medium text-gray-500">休憩(h)</label>
                       <div className="flex items-center border border-gray-300 rounded bg-white">
-                        <button type="button" onClick={() => handleBreakChange(-0.25)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1 leading-none" disabled={!canEdit}>▼</button>
+                        <button type="button" aria-label="休憩を15分減らす" onClick={() => handleBreakChange(-0.25)} className={stepButtonClass} disabled={!canEdit}>▼</button>
                         <input 
                             type="number"
                             step="0.25"
@@ -155,23 +165,24 @@ function ShiftRow({
                                 const val = parseFloat(e.target.value);
                                 onChange(shift.id, 'break_hours', isNaN(val) ? 0 : val);
                             }}
-                            className="w-10 sm:w-12 text-center text-sm border-0 focus:ring-0 p-0 sm:p-1 bg-transparent"
+                            className="w-12 h-10 text-center text-base border-0 focus:ring-0 p-0 bg-transparent"
+                            aria-label="休憩時間（時間）"
                             disabled={!canEdit}
                         />
-                        <button type="button" onClick={() => handleBreakChange(0.25)} className="text-gray-500 hover:text-blue-500 px-1.5 py-1 leading-none" disabled={!canEdit}>▲</button>
+                        <button type="button" aria-label="休憩を15分増やす" onClick={() => handleBreakChange(0.25)} className={stepButtonClass} disabled={!canEdit}>▲</button>
                       </div>
                   </div>
                   <div className="flex flex-col items-end sm:items-center">
-                      <p className="text-[10px] font-medium text-gray-500 leading-none mb-1">実動</p>
+                      <p className="text-xs font-medium text-gray-500 leading-none mb-1">実動</p>
                       <p className="font-bold text-base leading-none">{workDuration > 0 ? workDuration.toFixed(2) : '0.00'}h</p>
                   </div>
                   <div className="flex flex-col items-center ml-auto sm:ml-0">
-                      <button type="submit" className={`py-1.5 px-3 rounded text-white text-xs font-semibold shadow-sm ${isSaved ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300 min-w-[64px] whitespace-nowrap`} disabled={!canEdit}>
-                          {isSaved ? '保存済' : '保存'}
+                      <button type="submit" className={`h-10 px-4 rounded text-white text-sm font-semibold shadow-sm ${isSaved && !isEdited ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} disabled:bg-gray-300 min-w-[72px] whitespace-nowrap`} disabled={!canEdit}>
+                          {isSaved && !isEdited ? '保存済' : '保存'}
                       </button>
                       {isSaved && onDeleteActual && (
-                          <button type="button" onClick={() => onDeleteActual(shift.id)} className="text-[10px] text-red-500 hover:text-red-700 underline mt-1">
-                              解除
+                          <button type="button" onClick={() => onDeleteActual(shift.id)} className="mt-1 py-1 px-2 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50">
+                              保存を取消
                           </button>
                       )}
                   </div>
@@ -196,6 +207,7 @@ function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }
     const [end, setEnd] = useState(defaultEnd);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const showToast = useToast();
 
     useEffect(() => {
         if (defaultHours) {
@@ -223,7 +235,7 @@ function AddShiftRow({ day, employeeId, onSave, defaultHours, isHolidayRequest }
             setIsEditing(false);
             await onSave();
         } catch (err) {
-            alert(err instanceof Error ? err.message : '保存中にエラーが発生しました。');
+            showToast(err instanceof Error ? err.message : '保存中にエラーが発生しました。', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -299,9 +311,25 @@ export default function MySchedulePage() {
   const [error, setError] = useState<string | null>(null);
   
   // 一括保存用ステート
-  const [actualsState, setActualsState] = useState<Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }>>({});
+  const [actualsState, setActualsState] = useState<Record<number, ActualValues>>({});
+  // DBに保存されている値（画面の値と比べて、未保存の変更があるか判定する）
+  const [savedActuals, setSavedActuals] = useState<Record<number, ActualValues>>({});
+  // 最初の読み込みが終わったか（保存後の読み直しでは画面を「読み込み中」に切り替えない）
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const showToast = useToast();
   const [selectedActuals, setSelectedActuals] = useState<Set<number>>(new Set());
   const [isSavingAll, setIsSavingAll] = useState(false);
+
+  const editedIds = useMemo(() => new Set(
+      Object.keys(actualsState).map(Number).filter(id => !sameActual(actualsState[id], savedActuals[id]))
+  ), [actualsState, savedActuals]);
+  const confirmDiscard = useUnsavedChanges(editedIds.size > 0);
+
+  // 読み直しのときに、まだ保存していない他の日の入力を消さないために最新の値を参照する
+  const actualsRef = useRef(actualsState);
+  const savedRef = useRef(savedActuals);
+  actualsRef.current = actualsState;
+  savedRef.current = savedActuals;
 
   const days = useMemo(() => {
       const { start, end } = getPayPeriodInterval(currentDate);
@@ -356,7 +384,7 @@ export default function MySchedulePage() {
     }
   }, [loggedInUser]);
 
-  const fetchMySchedule = useCallback(async () => {
+  const fetchMySchedule = useCallback(async (options: { discardEditsFor?: number[]; resetAll?: boolean } = {}) => {
         if (!employeeId || employeeId === 'undefined') {
             const storedUser = localStorage.getItem('loggedInUser');
             const loggedIn = storedUser ? JSON.parse(storedUser) : null;
@@ -380,7 +408,6 @@ export default function MySchedulePage() {
             return;
         }
 
-        setIsLoading(true);
         setError(null);
 
         try {
@@ -420,7 +447,7 @@ export default function MySchedulePage() {
             setRequests(reqData);
             
             // 実績の表示用初期データをセット
-            const initialActuals: Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }> = {};
+            const initialActuals: Record<number, ActualValues> = {};
             shiftData.forEach(s => {
                 const start = s.actual_start_time?.substring(0, 5) || s.start_time?.substring(0, 5) || '';
                 const end = s.actual_end_time?.substring(0, 5) || s.end_time?.substring(0, 5) || '';
@@ -431,21 +458,40 @@ export default function MySchedulePage() {
                     break_hours: s.break_hours !== null && s.break_hours !== undefined ? Number(s.break_hours) : defaultBreakHours(calcDuration(start, end))
                 };
             });
-            setActualsState(initialActuals);
-            setSelectedActuals(new Set());
+            // 保存していない他の日の入力は残す（今保存した日・月を切り替えたときは除く）
+            const discard = new Set(options.discardEditsFor || []);
+            const nextActuals: Record<number, ActualValues> = { ...initialActuals };
+            if (!options.resetAll) {
+                Object.keys(initialActuals).map(Number).forEach(id => {
+                    const prev = actualsRef.current[id];
+                    if (!discard.has(id) && prev && !sameActual(prev, savedRef.current[id])) {
+                        nextActuals[id] = prev;
+                    }
+                });
+            }
+            setSavedActuals(initialActuals);
+            setActualsState(nextActuals);
+            setSelectedActuals(prev => new Set([...prev].filter(id => !discard.has(id) && nextActuals[id] && !sameActual(nextActuals[id], initialActuals[id]))));
 
         } catch (err) {
             setError(err instanceof Error ? err.message : '不明なエラーが発生しました。');
         } finally {
             setIsLoading(false);
+            setHasLoaded(true);
         }
   }, [employeeId, currentDate, router]);
 
   useEffect(() => {
     if (employeeId) {
-      fetchMySchedule();
+      fetchMySchedule({ resetAll: true });
     }
   }, [employeeId, currentDate, fetchMySchedule]);
+
+  const changeMonth = (diff: number) => {
+    if (!confirmDiscard()) return;
+    setIsLoading(true);
+    setCurrentDate(prev => (diff > 0 ? addMonths(prev, diff) : subMonths(prev, -diff)));
+  };
 
   const handleActualsChange = (shiftId: number, field: 'actual_start_time' | 'actual_end_time' | 'break_hours', value: string | number) => {
     setActualsState(prev => ({
@@ -478,10 +524,10 @@ export default function MySchedulePage() {
             }),
         });
         if (!response.ok) throw new Error('実績の保存に失敗しました。');
-        alert('勤務実績を保存しました。');
-        await fetchMySchedule();
+        showToast('勤務実績を保存しました。');
+        await fetchMySchedule({ discardEditsFor: [shiftId] });
     } catch (err) {
-        alert(err instanceof Error ? err.message : 'エラーが発生しました。');
+        showToast(err instanceof Error ? err.message : 'エラーが発生しました。', 'error');
     }
   };
 
@@ -494,9 +540,10 @@ export default function MySchedulePage() {
               body: JSON.stringify({ shift_id: shiftId })
           });
           if (!response.ok) throw new Error('実績の削除に失敗しました。');
-          await fetchMySchedule();
+          showToast('保存した実績を取り消しました。', 'info');
+          await fetchMySchedule({ discardEditsFor: [shiftId] });
       } catch (err) {
-          alert(err instanceof Error ? err.message : '削除中にエラーが発生しました。');
+          showToast(err instanceof Error ? err.message : '削除中にエラーが発生しました。', 'error');
       }
   };
 
@@ -526,7 +573,7 @@ export default function MySchedulePage() {
     });
 
     if (actualsToSave.length === 0) {
-        alert('保存する実績が選択されていません。チェックボックスで選択してください。');
+        showToast('保存する実績が選択されていません。チェックボックスで選択してください。', 'info');
         return;
     }
 
@@ -546,10 +593,10 @@ export default function MySchedulePage() {
             throw new Error(errData.details || '実績の一括保存に失敗しました。');
         }
         const resData = await response.json();
-        alert(`${resData.count}件の実績を保存・確定しました。`);
-        await fetchMySchedule();
+        showToast(`${resData.count}件の実績を保存・確定しました。`);
+        await fetchMySchedule({ discardEditsFor: actualsToSave.map(a => a.shift_id) });
     } catch (err) {
-        alert(err instanceof Error ? err.message : '一括保存中にエラーが発生しました。');
+        showToast(err instanceof Error ? err.message : '一括保存中にエラーが発生しました。', 'error');
     } finally {
         setIsSavingAll(false);
     }
@@ -580,28 +627,28 @@ export default function MySchedulePage() {
               const errData = await response.json();
               throw new Error(errData.details || 'シフトの削除に失敗しました。');
           }
-          alert('シフト予定を削除しました。');
-          await fetchMySchedule();
+          showToast('シフト予定を削除しました。', 'info');
+          await fetchMySchedule({ discardEditsFor: [shiftId] });
       } catch (err) {
-          alert(err instanceof Error ? err.message : '削除中にエラーが発生しました。');
+          showToast(err instanceof Error ? err.message : '削除中にエラーが発生しました。', 'error');
       }
   };
 
-  if (isLoading) return <p className="p-4 text-center">読み込み中...</p>;
+  if (isLoading || !hasLoaded) return <p className="p-4 text-center">読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
 
   return (
     <div className="container mx-auto p-4 max-w-3xl">
       <div className="sticky top-0 z-10 py-2 sm:py-3 -mx-4 px-4 sm:mx-0 sm:px-0 bg-gray-50 border-b border-gray-200 shadow-sm mb-4">
         <div className={`flex items-center justify-between ${loggedInUser?.isAdmin ? 'mb-2 sm:mb-3' : ''}`}>
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm font-semibold transition-colors">前月</button>
+          <button onClick={() => changeMonth(-1)} className="h-10 px-4 bg-gray-200 hover:bg-gray-300 rounded text-sm font-semibold transition-colors">前月</button>
           
           <div className="flex flex-col items-center">
-            <span className="text-[11px] sm:text-xs text-gray-600 font-bold leading-none mb-1">{employee?.name} さん</span>
+            <span className="text-xs text-gray-600 font-bold leading-none mb-1">{employee?.name} さん</span>
             <span className="text-base sm:text-lg font-bold leading-none text-gray-800">{format(getPayPeriodInterval(currentDate).start, 'M/d')} - {format(getPayPeriodInterval(currentDate).end, 'M/d')}</span>
           </div>
 
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm font-semibold transition-colors">次月</button>
+          <button onClick={() => changeMonth(1)} className="h-10 px-4 bg-gray-200 hover:bg-gray-300 rounded text-sm font-semibold transition-colors">次月</button>
         </div>
 
         {loggedInUser?.isAdmin && (
@@ -610,7 +657,7 @@ export default function MySchedulePage() {
               <span className="font-bold text-blue-800 text-sm">管理者モード: </span>
               <select
                 value={employeeId}
-                onChange={(e) => router.push(`/my-schedule/${e.target.value}`)}
+                onChange={(e) => { if (confirmDiscard()) router.push(`/my-schedule/${e.target.value}`); }}
                 className="form-select rounded border-gray-300 py-1 px-3 bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
               >
                 {employeesList.map(emp => (
@@ -663,6 +710,7 @@ export default function MySchedulePage() {
                             });
                         }}
                         onDeleteActual={handleDeleteActual}
+                        isEdited={editedIds.has(shift.id)}
                     />
                 );
             } else if (loggedInUser?.isAdmin) {
@@ -671,7 +719,7 @@ export default function MySchedulePage() {
                         key={dateStr}
                         day={day}
                         employeeId={employeeId}
-                        onSave={fetchMySchedule}
+                        onSave={() => fetchMySchedule()}
                         defaultHours={employee?.default_work_hours}
                         isHolidayRequest={isHolidayRequest}
                     />

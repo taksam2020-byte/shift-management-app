@@ -75,11 +75,11 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-3">
             <Image src="/logo.png" alt="Logo" width={52} height={52} className="rounded-md" />
-            <span className="text-lg font-bold hover:text-gray-300">シフトくん</span>
+            <span className="text-lg font-bold hover:text-gray-300 whitespace-nowrap">シフトくん</span>
           </Link>
           {user && (
-              <nav className="hidden md:block">
-                  <ul className="flex items-center gap-6 text-sm pl-1">
+              <nav className="hidden lg:block">
+                  <ul className="flex items-center gap-4 xl:gap-6 text-sm pl-1 whitespace-nowrap">
                       {renderLinks()}
                   </ul>
               </nav>
@@ -88,14 +88,14 @@ export default function Header() {
 
         <div className="flex items-center gap-4">
           {user && (
-              <div className="hidden md:flex items-center gap-4">
-                  <span className="text-sm">{user.name} さん</span>
+              <div className="hidden lg:flex items-center gap-4 whitespace-nowrap">
+                  <span className="hidden xl:inline text-sm">{user.name} さん</span>
                   <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">ログアウト</button>
               </div>
           )}
           {user && (
-              <div className="md:hidden">
-                  <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
+              <div className="lg:hidden">
+                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="メニューを開く" className="p-2 -mr-2">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                   </button>
               </div>
@@ -104,7 +104,7 @@ export default function Header() {
       </div>
 
       {isMenuOpen && user && (
-        <div className="md:hidden bg-gray-700 border-t border-gray-600">
+        <div className="lg:hidden bg-gray-700 border-t border-gray-600">
             <nav className="container mx-auto px-4 pb-4 pt-2">
                 <ul className="flex flex-col gap-4 text-base">
                     {renderLinks()}
