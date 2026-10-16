@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
+import { checkRole } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const sql = `
       SELECT 

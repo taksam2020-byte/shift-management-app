@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
+import { checkRole } from '@/lib/auth';
 
 // GET all company holidays
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await checkRole(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { rows: holidays } = await query('SELECT date, note FROM company_holidays ORDER BY date');
     const formattedHolidays = holidays.map((holiday: { date: string; note: string }) => ({
@@ -19,22 +22,24 @@ export async function GET() {
 
 // POST a new company holiday (upsert)
 export async function POST(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const { date, note } = await request.json();
     if (!date) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 });
     }
-    
+
     // PostgreSQL 'upsert' syntax
     const sql = `
-      INSERT INTO company_holidays (date, note) 
-      VALUES ($1, $2) 
-      ON CONFLICT (date) 
+      INSERT INTO company_holidays (date, note)
+      VALUES ($1, $2)
+      ON CONFLICT (date)
       DO UPDATE SET note = EXCLUDED.note
     `;
-    
+
     await query(sql, [date, note || '']);
-    
+
     return NextResponse.json({ message: 'Company holiday saved' }, { status: 201 });
   } catch (error) {
     console.error('Failed to save company holiday:', error);
@@ -44,6 +49,9 @@ export async function POST(request: Request) {
 
 // DELETE a company holiday
 export async function DELETE(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date');
 

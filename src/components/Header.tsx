@@ -6,36 +6,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/components/AuthProvider';
 
-interface User {
-  id: number;
-  name: string;
-  isAdmin: boolean;
-  isViewer?: boolean;
-  request_type?: 'holiday' | 'work';
-}
-
 export default function Header() {
-  const { isAuthenticated } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const storedUser = localStorage.getItem('loggedInUser');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } else {
-      setUser(null);
-    }
     setIsMenuOpen(false);
-  }, [pathname, isAuthenticated]);
+  }, [pathname]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // サーバー側のログイン情報（クッキー）を消してからトップへ戻る
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('loggedInUser');
     localStorage.removeItem('authToken');
-    setUser(null);
     window.location.href = '/';
   };
 
@@ -70,6 +54,7 @@ export default function Header() {
     <>
       <li><Link href={`/my-schedule/${user!.id}`} className={pathname.startsWith('/my-schedule') ? activeClass : inactiveClass}>マイシフト</Link></li>
       <li><Link href={`/requests/${user!.id}`} className={pathname === `/requests/${user!.id}` ? activeClass : inactiveClass}>{requestLinkText}</Link></li>
+      <li><Link href="/employee/reports" className={pathname === '/employee/reports' ? activeClass : inactiveClass}>マイレポート</Link></li>
       <li><Link href="/schedule/view" className={pathname === '/schedule/view' ? activeClass : inactiveClass}>全体シフト確認</Link></li>
     </>
   );

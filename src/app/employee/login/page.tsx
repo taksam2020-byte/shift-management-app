@@ -53,9 +53,6 @@ export default function EmployeeLoginPage() {
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Always clear old token on new login attempt
-    localStorage.removeItem('authToken');
-
     if (!selectedEmployeeId || !password) {
         setError('名前とパスワードの両方を入力してください。');
         return;
@@ -67,7 +64,7 @@ export default function EmployeeLoginPage() {
         const response = await fetch('/api/employee/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password, rememberMe: true }), // Always remember
+            body: JSON.stringify({ employeeId: parseInt(selectedEmployeeId, 10), password }),
         });
 
         const data = await response.json();
@@ -75,9 +72,6 @@ export default function EmployeeLoginPage() {
             throw new Error(data.error || 'ログインに失敗しました。');
         }
 
-        if (data.token) {
-            localStorage.setItem('authToken', data.token);
-        }
         localStorage.setItem('loggedInUser', JSON.stringify(data.user));
         localStorage.setItem('lastEmployeeId', selectedEmployeeId); // 最後にログインしたIDを記憶
         // Instead of pushing, we reload the page. AuthProvider will handle the redirect.

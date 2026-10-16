@@ -2,9 +2,16 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { query } from '@/lib/db.mjs';
 import bcrypt from 'bcrypt';
+import { checkRole } from '@/lib/auth';
 
 // GET handler to fetch a single employee by ID
 export async function GET(request: NextRequest, { params }: any) {
+  const auth = await checkRole(request, 'admin', 'employee');
+  if (auth instanceof NextResponse) return auth;
+  // 従業員は自分の情報だけ見られる
+  if (auth.role === 'employee' && String(auth.id) !== String(params.id)) {
+    return NextResponse.json({ error: '他の人の情報は見られません。' }, { status: 403 });
+  }
   try {
     const sql = 'SELECT id, name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year, hire_date, is_active FROM employees WHERE id = $1';
     const result = await query(sql, [params.id]);
@@ -22,6 +29,8 @@ export async function GET(request: NextRequest, { params }: any) {
 
 // PUT handler to update an employee
 export async function PUT(request: NextRequest, { params }: any) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const employeeData = await request.json();
     const { name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, password, default_work_hours, request_type, initial_income, initial_income_year, hire_date, is_active } = employeeData;
@@ -89,6 +98,8 @@ export async function PUT(request: NextRequest, { params }: any) {
 
 // DELETE handler to remove an employee
 export async function DELETE(request: NextRequest, { params }: any) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const sql = 'DELETE FROM employees WHERE id = $1';
     const result = await query(sql, [params.id]);

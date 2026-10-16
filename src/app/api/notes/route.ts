@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db.mjs';
+import { checkRole } from '@/lib/auth';
 
 // GET handler to fetch notes for a given date range
 export async function GET(request: Request) {
+  const auth = await checkRole(request);
+  if (auth instanceof NextResponse) return auth;
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
@@ -28,6 +31,8 @@ export async function GET(request: Request) {
 
 // POST handler to create or update a daily note (upsert)
 export async function POST(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
   const client = await getDb().connect();
   console.log('NOTES API: Client connected.');
   try {

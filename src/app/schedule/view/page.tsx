@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { format, eachDayOfInterval, getDay, addMonths, subMonths, parseISO, startOfMonth, endOfMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { shiftStringHours } from '@/lib/worktime';
 import { ja } from 'date-fns/locale';
 
 // --- Type Definitions ---
@@ -27,18 +28,8 @@ const getInitialDateForPayPeriod = () => {
   return new Date();
 };
 
-const parseShiftTime = (time: string): number => {
-    if (!time || !time.includes('-')) return 0;
-    const [start, end] = time.split('-');
-    const startHour = parseInt(start.split(':')[0], 10);
-    const startMinute = parseInt(start.split(':')[1] || '0', 10);
-    const endHour = parseInt(end.split(':')[0], 10);
-    const endMinute = parseInt(end.split(':')[1] || '0', 10);
-    if (isNaN(startHour) || isNaN(endHour)) return 0;
-    const duration = (endHour + endMinute / 60) - (startHour + startMinute / 60);
-    if (duration <= 0) return 0;
-    return duration >= 6 ? duration - 1 : duration;
-};
+// 休憩の控除ルールは lib/worktime.ts に集約
+const parseShiftTime = shiftStringHours;
 
 // --- Main Component ---
 export default function ViewSchedulePage() {

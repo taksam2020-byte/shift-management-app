@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getDb, query } from '@/lib/db.mjs';
+import { checkRole } from '@/lib/auth';
 
 // GET handler, rewritten with robust date filtering
 export async function GET(request: Request) {
+  const auth = await checkRole(request);
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
@@ -12,7 +16,7 @@ export async function GET(request: Request) {
     const baseSql = `
       SELECT 
         s.id, s.employee_id, s.date, s.start_time, s.end_time,
-        a.id as actual_id, a.actual_start_time, a.actual_end_time, a.break_hours
+        a.id as actual_id, a.actual_start_time, a.actual_end_time, a.break_hours${auth.role === 'admin' ? ', a.hourly_wage as actual_hourly_wage' : ''}
       FROM shifts s
       LEFT JOIN actual_work_hours a ON s.id = a.shift_id
     `;
@@ -46,6 +50,9 @@ export async function GET(request: Request) {
 
 // POST handler - Rewritten for simplicity and robustness using UPSERT
 export async function POST(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
+
   const pool = getDb();
   const client = await pool.connect();
 

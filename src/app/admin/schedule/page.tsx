@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { format, eachDayOfInterval, getDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 import ShiftInput from '@/components/ShiftInput';
+import { calcDuration, shiftStringHours } from '@/lib/worktime';
 
 // --- Type Definitions ---
 interface Employee { 
@@ -48,17 +49,12 @@ const getInitialDateForPayPeriod = () => {
   return new Date();
 };
 
+// 休憩の控除ルールは lib/worktime.ts に集約（6時間以上の勤務で1時間控除）
 const parseShiftTime = (time: string, withBreak: boolean = false): number => {
     if (!time || !time.includes('-')) return 0;
+    if (withBreak) return shiftStringHours(time);
     const [start, end] = time.split('-');
-    const startHour = parseInt(start.split(':')[0], 10);
-    const startMinute = parseInt(start.split(':')[1] || '0', 10);
-    const endHour = parseInt(end.split(':')[0], 10);
-    const endMinute = parseInt(end.split(':')[1] || '0', 10);
-    if (isNaN(startHour) || isNaN(endHour)) return 0;
-    const duration = (endHour + endMinute / 60) - (startHour + startMinute / 60);
-    if (withBreak && duration >= 6) { return duration - 1; }
-    return duration > 0 ? duration : 0;
+    return calcDuration(start, end);
 };
 
 const getCurrentFiscalYear = (date: Date) => {
@@ -80,6 +76,8 @@ export default function SchedulePage() {
   const [annualIncomes, setAnnualIncomes] = useState<AnnualIncomeState>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // 自動作成のとき、今入っているシフトを残して空き枠だけ埋めるか
+  const [keepExisting, setKeepExisting] = useState(true);
 
   // --- Validation Logic ---
   const validateSchedule = useCallback((currentSchedule: ScheduleState, allEmployees: Employee[]) => {
@@ -383,6 +381,10 @@ export default function SchedulePage() {
       };  
       
   const handleGenerateSchedule = async () => {
+    const message = keepExisting
+        ? '今入っているシフトは残したまま、空いている所だけ自動で割り当てます。よろしいですか？'
+        : 'この月のシフトをすべて作り直します。手で入力した内容も上書きされます。よろしいですか？';
+    if (!window.confirm(message)) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -392,7 +394,10 @@ export default function SchedulePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 startDate: format(start, 'yyyy-MM-dd'), 
-                endDate: format(end, 'yyyy-MM-dd') 
+                endDate: format(end, 'yyyy-MM-dd'),
+                keepExisting,
+                // 画面で編集中（未保存）の内容も残せるように、今の表を送る
+                baseSchedule: keepExisting ? schedule : undefined,
             }),
         });
         if (!response.ok) {
@@ -402,9 +407,12 @@ export default function SchedulePage() {
         const generatedSchedule = await response.json();
         
         const newSchedule: ScheduleState = JSON.parse(JSON.stringify(schedule));
+        // 画面に表示している（在籍中の）従業員の分だけ反映する
+        const visibleIds = new Set(employees.map(e => e.id));
         Object.entries(generatedSchedule).forEach(([date, shifts]) => {
             if (!newSchedule[date]) newSchedule[date] = {};
             Object.entries(shifts as Record<string, string>).forEach(([empId, time]) => {
+                if (!visibleIds.has(Number(empId))) return;
                 newSchedule[date][Number(empId)] = time === '休み' ? '' : time;
             });
         });
@@ -450,6 +458,10 @@ export default function SchedulePage() {
           
           {/* 右側: アクションボタン */}
           <div className="absolute right-2 flex items-center gap-2">
+            <label className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer" title="チェックを入れると、今入っているシフト（未保存の編集も含む）を残して空いている所だけ自動で埋めます。外すと月全体を作り直します。">
+              <input type="checkbox" checked={keepExisting} onChange={(e) => setKeepExisting(e.target.checked)} className="h-3.5 w-3.5" />
+              既存シフトを残す <span className="text-gray-400">ⓘ</span>
+            </label>
             <button onClick={handleGenerateSchedule} className="py-1.5 px-4 bg-green-500 text-white text-sm font-bold rounded hover:bg-green-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="従業員の希望や週・年間の上限を考慮して、システムが自動的にシフトを割り当てます。">仮シフト割当 <span className="font-normal text-green-200">ⓘ</span></button>
             <button onClick={() => handleSave()} className="py-1.5 px-4 bg-blue-500 text-white text-sm font-bold rounded hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={isLoading} title="作成・変更したシフトと備考をデータベースに保存します。">シフト保存 <span className="font-normal text-blue-200">ⓘ</span></button>
           </div>
