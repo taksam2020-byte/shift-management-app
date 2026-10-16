@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
 import { eachMonthOfInterval, format } from 'date-fns';
-
-// Helper to parse time and calculate duration
-const calculateDuration = (start: string, end: string): number => {
-    if (!start || !end) return 0;
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-    if (isNaN(startHour) || isNaN(endHour) || isNaN(startMinute) || isNaN(endMinute)) return 0;
-    const duration = (endHour + endMinute / 60) - (startHour + startMinute / 60);
-    return duration > 0 ? duration : 0;
-};
+import { checkRole } from '@/lib/auth';
+import { effectiveWage, recordHours, WorkRecord } from '@/lib/worktime';
 
 interface Employee {
   id: number;
@@ -20,7 +12,29 @@ interface Employee {
   initial_income_year: number | null;
 }
 
+/** 月度（YYYY-MM）と締め日から集計期間を求める。20日締めなら「前月21日〜当月20日」 */
+function periodOf(monthDate: Date, closingDay: number) {
+  if (closingDay === 31) {
+    return {
+      start: new Date(monthDate.getFullYear(), monthDate.getMonth(), 1),
+      end: new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0),
+    };
+  }
+  const end = new Date(monthDate.getFullYear(), monthDate.getMonth(), closingDay);
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - 1);
+  start.setDate(start.getDate() + 1);
+  return { start, end };
+}
+
+// 複数月度の勤務時間・日数・概算給与
+// - 管理者: 全員分
+// - 閲覧者: 全員分（給与は返さない）
+// - 従業員: 自分の分だけ
 export async function GET(request: Request) {
+  const auth = await checkRole(request, 'admin', 'viewer', 'employee');
+  if (auth instanceof NextResponse) return auth;
+
   const { searchParams } = new URL(request.url);
   const startMonthStr = searchParams.get('startMonth'); // YYYY-MM
   const endMonthStr = searchParams.get('endMonth');   // YYYY-MM
@@ -33,13 +47,20 @@ export async function GET(request: Request) {
   }
 
   try {
-    const condition = includeInactive ? '' : 'WHERE is_active = TRUE OR is_active IS NULL';
-    const employeesResult = await query(`SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ${condition} ORDER BY id`);
-    const employees: Employee[] = employeesResult.rows;
+    let employees: Employee[];
+    if (auth.role === 'employee') {
+      const { rows } = await query('SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees WHERE id = $1', [auth.id]);
+      employees = rows;
+    } else {
+      const condition = includeInactive ? '' : 'WHERE is_active = TRUE OR is_active IS NULL';
+      const { rows } = await query(`SELECT id, name, hourly_wage, initial_income, initial_income_year FROM employees ${condition} ORDER BY id`);
+      employees = rows;
+    }
+    const employeeMap = new Map(employees.map(e => [e.id, e]));
 
     const monthIntervals = eachMonthOfInterval({
-        start: new Date(`${startMonthStr}-01`),
-        end: new Date(`${endMonthStr}-01`),
+        start: new Date(`${startMonthStr}-01T00:00:00`),
+        end: new Date(`${endMonthStr}-01T00:00:00`),
     });
 
     const results: Record<string, Record<number, Record<string, number>>> = {
@@ -53,87 +74,68 @@ export async function GET(request: Request) {
         const monthLabel = format(monthDate, 'yyyy-MM');
         monthLabels.push(monthLabel);
 
-        let periodStart, periodEnd;
-        if (closingDay === 31) {
-            periodStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-            periodEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-        } else {
-            periodEnd = new Date(monthDate.getFullYear(), monthDate.getMonth(), closingDay);
-            periodStart = new Date(periodEnd);
-            periodStart.setMonth(periodStart.getMonth() - 1);
-            periodStart.setDate(periodStart.getDate() + 1);
-        }
-
-        const startDate = format(periodStart, 'yyyy-MM-dd');
-        const endDate = format(periodEnd, 'yyyy-MM-dd');
-
+        const { start, end } = periodOf(monthDate, closingDay);
         const joinType = useSchedule ? 'LEFT' : 'INNER';
-        const sql = `
+        const { rows: shifts } = await query(`
             SELECT
                 s.employee_id,
-                s.start_time as schedule_start_time,
-                s.end_time as schedule_end_time,
+                s.start_time,
+                s.end_time,
                 a.actual_start_time,
                 a.actual_end_time,
-                a.break_hours
+                a.break_hours,
+                a.hourly_wage AS actual_hourly_wage
             FROM shifts s
             ${joinType} JOIN actual_work_hours a ON s.id = a.shift_id
             WHERE s.date BETWEEN $1 AND $2
-        `;
-        const { rows: shifts } = await query(sql, [startDate, endDate]);
+        `, [format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd')]);
 
         const monthlyTotals: Record<number, { hours: number; days: number; pay: number; }> = {};
 
-        for (const shift of shifts) {
-            const employee = employees.find((e: Employee) => e.id === shift.employee_id);
+        for (const shift of shifts as (WorkRecord & { employee_id: number })[]) {
+            const employee = employeeMap.get(shift.employee_id);
             if (!employee) continue;
 
-            if (!monthlyTotals[shift.employee_id]) {
-                monthlyTotals[shift.employee_id] = { hours: 0, days: 0, pay: 0 };
-            }
-            
-            const startTime = useSchedule ? shift.actual_start_time || shift.schedule_start_time : shift.actual_start_time;
-            const endTime = useSchedule ? shift.actual_end_time || shift.schedule_end_time : shift.actual_end_time;
+            const hours = recordHours(shift, useSchedule);
+            if (hours <= 0) continue;
 
-            if (!startTime || !endTime) continue;
-
-            const duration = calculateDuration(startTime, endTime);
-            const breakHours = shift.break_hours ?? (duration >= 6 ? 1 : 0);
-            const netHours = duration - breakHours;
-
-            if (netHours > 0) {
-                monthlyTotals[shift.employee_id].hours += netHours;
-                monthlyTotals[shift.employee_id].days += 1;
-                monthlyTotals[shift.employee_id].pay += netHours * employee.hourly_wage;
-            }
+            const totals = monthlyTotals[shift.employee_id] ??= { hours: 0, days: 0, pay: 0 };
+            totals.hours += hours;
+            totals.days += 1;
+            // 実績がある日は「実績保存時の時給」、予定のみの日は現在の時給
+            totals.pay += hours * effectiveWage(shift, employee.hourly_wage);
         }
 
         for (const emp of employees) {
-            if (!results.hours[emp.id]) {
-                results.hours[emp.id] = {};
-                results.days[emp.id] = {};
-                results.pay[emp.id] = {};
-            }
+            results.hours[emp.id] ??= {};
+            results.days[emp.id] ??= {};
+            results.pay[emp.id] ??= {};
             results.hours[emp.id][monthLabel] = monthlyTotals[emp.id]?.hours || 0;
             results.days[emp.id][monthLabel] = monthlyTotals[emp.id]?.days || 0;
             results.pay[emp.id][monthLabel] = monthlyTotals[emp.id]?.pay || 0;
         }
     }
-    
+
     // Add initial_income to the first month's pay for relevant employees
     const startYear = parseInt(startMonthStr.substring(0, 4), 10);
     const firstMonthLabel = monthLabels[0];
     if (firstMonthLabel) {
         for (const emp of employees) {
-            if (emp.initial_income && emp.initial_income_year === startYear) {
-                if (results.pay[emp.id]) {
-                    results.pay[emp.id][firstMonthLabel] += emp.initial_income;
-                }
+            if (emp.initial_income && emp.initial_income_year === startYear && results.pay[emp.id]) {
+                results.pay[emp.id][firstMonthLabel] += emp.initial_income;
             }
         }
     }
 
-    return NextResponse.json({ employees, months: monthLabels, results });
+    // 閲覧者には給与関連の情報を返さない
+    if (auth.role === 'viewer') {
+      results.pay = {};
+    }
+    const publicEmployees = employees.map(e => (
+      auth.role === 'viewer' ? { id: e.id, name: e.name } : e
+    ));
+
+    return NextResponse.json({ employees: publicEmployees, months: monthLabels, results });
 
   } catch (error) {
     console.error('Failed to generate cross-period report:', error);

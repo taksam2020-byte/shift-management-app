@@ -170,7 +170,7 @@ export default function ManageEmployeesPage() {
     <div className="container mx-auto p-4">
       <div className="mb-4">
         <p className="text-sm text-gray-600 bg-blue-50 border border-blue-100 p-2 rounded inline-block">
-          ※ シミュレーションや概算給与の計算に用いる時給は、期間中に時給が変更された場合でも、その日ごとの当時の時給に基づいて正確に計算されます。（現在の基本時給で一律計算されるわけではありません）
+          ※ 概算給与や年収シミュレーションの時給は、実績が保存済みの日は「実績を保存した時点の時給」、予定だけの日は「現在の時給」で計算します。時給を変更しても、過去の実績分の金額は変わりません。
         </p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

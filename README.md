@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# シフトくん
 
-## Getting Started
+パートタイマーのシフトを、ブラウザ上で「希望の提出 → 自動作成 → 手直し → 実績入力 → 集計」まで行うための社内ツールです。
+扶養の範囲（年収103万・130万など）を超えないように、年間の働く量を調整しやすくしています。
+画面に出る給与は概算で、実際の給与計算には使いません。
 
-First, run the development server:
+## 利用者の種類
+
+| 種類 | ログイン方法 | できること |
+|---|---|---|
+| 管理者 | 管理者パスワード（環境変数 `ADMIN_PASSWORD`） | シフト作成・従業員管理・集計・休業日設定・実績の代理入力など |
+| 従業員 | 名前を選んで本人のパスワード（30日間ログインを保持） | マイシフト（実績入力）・希望提出・マイレポート・全体シフト閲覧 |
+| 閲覧のみ | 不要（`VIEWER_PASSWORD` を設定した場合はそのパスワード） | 月間・年間集計（給与は非表示）・全体シフト閲覧 |
+
+ログイン状態はサーバーが発行する署名付きクッキーで管理し、すべてのAPIでサーバー側が権限を確認します。
+
+## 環境変数（Vercel の Settings → Environment Variables で設定）
+
+| 名前 | 必須 | 説明 |
+|---|---|---|
+| `POSTGRES_URL` | 必須 | データベース（Neon）の接続先。Vercel と Neon の連携で自動設定済み |
+| `ADMIN_PASSWORD` | 必須 | 管理者ログインのパスワード。未設定だと管理者ログインできません |
+| `AUTH_SECRET` | 推奨 | ログイン用クッキーの署名に使う長いランダムな文字列。未設定なら `POSTGRES_URL` を代わりに使います |
+| `VIEWER_PASSWORD` | 任意 | 設定すると「閲覧のみ」にもパスワードが必要になります |
+
+`AUTH_SECRET` や `ADMIN_PASSWORD` を変更すると、ログイン中の人は全員ログアウトされます（`AUTH_SECRET` の場合）または次回から新しいパスワードが必要になります。
+
+## 開発のしかた
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install          # 必要なパッケージを入れる
+npm run dev          # http://localhost:3000 で起動（.env.local に上の環境変数を書く）
+npm test             # 自動テスト
+npm run lint         # コードのチェック
+npm run typecheck    # 型のチェック
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run build` は、先に `scripts/migrate.mjs`（DBの列追加など。何度実行しても安全）を実行してからビルドします。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 計算ルール
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+計算ルールは `src/lib/worktime.ts` にまとめてあり、どの画面でも同じルールで計算します。
 
-## Learn More
+- 休憩：実績で休憩を入力した日はその時間を使います。休憩が記録されていない日は「6時間以上の勤務で1時間」を差し引きます。
+- 日をまたぐ勤務：終了時刻が開始時刻より前なら翌日までの勤務として扱います（例：22:00-02:00 は4時間）。
+- 時給：実績を保存した日は「保存した時点の時給」、予定だけの日は「現在の時給」で計算します。
 
-To learn more about Next.js, take a look at the following resources:
+## 仮シフト自動作成のルール（`src/lib/scheduler.ts`）
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 在籍中の従業員だけが対象です。
+- 土日・祝日・会社の休業日は全員休み、希望休の日は休み、希望出勤日は最優先で入れます。
+- 月曜や連休明けは、出られる人を全員入れます。
+- 週の上限（日数・時間）を超えないようにします。年収上限は「今年の初期収入＋1月〜先月の収入＋今月の予定」で判定します。
+- 勤務時間の少ない人を優先し、同じ日に同じグループの人が偏らないように配置します。
+- 「既存シフトを残す」にチェックがあると、今入っているシフト（未保存の編集も含む）を残して空き枠だけ埋めます。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## フォルダ構成
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/app/            画面（page.tsx）と API（api/**/route.ts）
+src/components/     ヘッダー、ログイン判定、シフト・実績の入力欄
+src/lib/            DB接続（db.mjs）、ログイン（auth.ts）、計算ルール（worktime.ts）、自動作成（scheduler.ts）
+scripts/            DBの初期作成（init-pg-db.mjs）とマイグレーション（migrate.mjs）など
+tests/              自動テスト
+```

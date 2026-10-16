@@ -8,9 +8,24 @@ export default function HomePage() {
 
   const handleAdminLogin = () => router.push('/admin/login');
   const handleEmployeeLogin = () => router.push('/employee/login');
-  const handleViewerLogin = () => {
-    const viewerUser = { id: 0, name: '閲覧者', isAdmin: false, isViewer: true };
-    localStorage.setItem('loggedInUser', JSON.stringify(viewerUser));
+  const handleViewerLogin = async (password?: string) => {
+    const response = await fetch('/api/auth/viewer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      // 閲覧用パスワードが設定されている場合は入力してもらう
+      if (data.passwordRequired) {
+        const input = window.prompt(password === undefined ? '閲覧用パスワードを入力してください' : 'パスワードが違います。もう一度入力してください');
+        if (input !== null) await handleViewerLogin(input);
+        return;
+      }
+      alert(data.error || 'ログインに失敗しました。');
+      return;
+    }
+    localStorage.setItem('loggedInUser', JSON.stringify(data.user));
     router.push('/dashboard');
   };
 
@@ -32,7 +47,7 @@ export default function HomePage() {
           <button onClick={handleEmployeeLogin} className="block w-full text-center px-6 py-4 text-lg font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 transition-transform transform hover:scale-105">
             従業員ログイン
           </button>
-          <button onClick={handleViewerLogin} className="block w-full text-center px-6 py-4 text-lg font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 transition-transform transform hover:scale-105">
+          <button onClick={() => handleViewerLogin()} className="block w-full text-center px-6 py-4 text-lg font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 transition-transform transform hover:scale-105">
             閲覧のみ
           </button>
         </div>

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { format, eachDayOfInterval, getDay, parseISO, addMonths, subMonths, startOfToday } from 'date-fns';
+import { format, eachDayOfInterval, getDay, parseISO, addMonths, subMonths } from 'date-fns';
+import { netHours } from '@/lib/worktime';
 
 // --- Type Definitions ---
 interface Employee { id: number; name: string; hourly_wage: number; }
 interface Shift { employee_id: number; date: string; start_time: string; end_time: string; }
-interface Actual { shift_id: number; actual_start_time: string; actual_end_time: string; break_hours: number; }
-interface ShiftWithActual extends Shift { actual_id: number | null; actual_start_time: string | null; actual_end_time: string | null; break_hours: number | null; }
+interface ShiftWithActual extends Shift { actual_id: number | null; actual_start_time: string | null; actual_end_time: string | null; break_hours: number | string | null; actual_hourly_wage?: number | null; }
 interface DailyNote { date: string; note: string; }
 interface Holiday { date: Date; name: string; }
 
@@ -35,16 +35,6 @@ const getPeriodDates = (date: Date, closingDay: string) => {
         startDate: format(periodStart, 'yyyy-MM-dd'), 
         endDate: format(periodEnd, 'yyyy-MM-dd') 
     };
-};
-
-const parseHours = (startStr: string, endStr: string, breakHours: number = 0): number => {
-    if (!startStr || !endStr) return 0;
-    const start = new Date(`1970-01-01T${startStr}Z`);
-    const end = new Date(`1970-01-01T${endStr}Z`);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-    let duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60); // duration in hours
-    if (duration < 0) duration += 24; // Handle overnight shifts
-    return Math.max(0, duration - breakHours);
 };
 
 export default function MonthlyReportPage() {
@@ -119,7 +109,7 @@ export default function MonthlyReportPage() {
   }, [dateRange]);
 
   const processedData = useMemo(() => {
-    const data: Record<string, Record<number, { hours: number; time: string; highlight: boolean }>> = {};
+    const data: Record<string, Record<number, { hours: number; time: string; highlight: boolean; wage: number | null }>> = {};
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     shifts.forEach(s => {
@@ -127,16 +117,19 @@ export default function MonthlyReportPage() {
       let hours = 0;
       let time = '';
       let highlight = false;
+      let wage: number | null = null;
 
       const hasSchedule = !!(s.start_time && s.end_time);
       const hasActual = !!s.actual_id;
       const isPastOrToday = dateStr <= todayStr;
 
       if (hasActual) {
-        hours = parseHours(s.actual_start_time || '', s.actual_end_time || '', s.break_hours || 1);
+        hours = netHours(s.actual_start_time, s.actual_end_time, s.break_hours);
+        // 実績保存時の時給（管理者にだけ返ってくる）
+        wage = s.actual_hourly_wage ?? null;
         time = `${s.actual_start_time?.substring(0, 5) || ''}-${s.actual_end_time?.substring(0, 5) || ''}`;
       } else if (useSchedule && hasSchedule) {
-        hours = parseHours(s.start_time, s.end_time, 1);
+        hours = netHours(s.start_time, s.end_time);
         time = `${s.start_time.substring(0, 5)}-${s.end_time.substring(0, 5)}`;
       }
 
@@ -149,7 +142,7 @@ export default function MonthlyReportPage() {
 
       if (hours > 0 || highlight) {
         if (!data[dateStr]) data[dateStr] = {};
-        data[dateStr][s.employee_id] = { hours, time, highlight };
+        data[dateStr][s.employee_id] = { hours, time, highlight, wage };
       }
     });
     return data;
@@ -161,12 +154,14 @@ export default function MonthlyReportPage() {
     days.forEach(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
       employees.forEach(emp => {
-        const hours = processedData[dateStr]?.[emp.id]?.hours || 0;
-        const highlight = processedData[dateStr]?.[emp.id]?.highlight;
+        const cell = processedData[dateStr]?.[emp.id];
+        const hours = cell?.hours || 0;
+        const highlight = cell?.highlight;
         if (hours > 0) {
           totals[emp.id].days += 1;
           totals[emp.id].hours += hours;
-          totals[emp.id].salary += hours * emp.hourly_wage;
+          // 実績がある日は保存時の時給、予定のみの日は現在の時給
+          totals[emp.id].salary += hours * (cell?.wage ?? emp.hourly_wage ?? 0);
         }
         if (highlight) {
           totals[emp.id].unconfirmed += 1;

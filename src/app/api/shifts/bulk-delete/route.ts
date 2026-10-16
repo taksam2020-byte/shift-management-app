@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db.mjs';
+import { getDb } from '@/lib/db.mjs';
+import { checkRole } from '@/lib/auth';
 
 export async function POST(request: Request) {
+  const auth = await checkRole(request, 'admin');
+  if (auth instanceof NextResponse) return auth;
+
+  const client = await getDb().connect();
   try {
     const { shiftIds } = await request.json();
 
@@ -9,16 +14,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No shift IDs provided' }, { status: 400 });
     }
 
-    // まず、万が一実績が存在しているシフトが含まれていた場合の安全策として、
+    // 万が一実績が存在しているシフトが含まれていた場合の安全策として、
     // 対象シフトに紐づくactual_work_hoursがあれば削除する（通常はないはずだが整合性のため）
-    const params = shiftIds.map((_, i) => `$${i + 1}`).join(',');
-    
-    await query(`DELETE FROM actual_work_hours WHERE shift_id IN (${params})`, shiftIds);
-    await query(`DELETE FROM shifts WHERE id IN (${params})`, shiftIds);
+    await client.query('BEGIN');
+    await client.query('DELETE FROM actual_work_hours WHERE shift_id = ANY($1::int[])', [shiftIds]);
+    const result = await client.query('DELETE FROM shifts WHERE id = ANY($1::int[])', [shiftIds]);
+    await client.query('COMMIT');
 
-    return NextResponse.json({ success: true, count: shiftIds.length });
+    return NextResponse.json({ success: true, count: result.rowCount });
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error('Failed to bulk delete shifts:', error);
     return NextResponse.json({ error: 'Failed to bulk delete shifts' }, { status: 500 });
+  } finally {
+    client.release();
   }
 }

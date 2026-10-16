@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO, isPast, getDay, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
 import ActualsInput from '@/components/ActualsInput';
 import Link from 'next/link';
+import { calcDuration, defaultBreakHours } from '@/lib/worktime';
 
 // --- Type Definitions ---
 interface ShiftRequest { employee_id: number; date: string; request_type: 'holiday' | 'work'; }
@@ -54,15 +55,6 @@ const getInitialDateForPayPeriod = () => {
   return new Date();
 };
 
-const calculateDuration = (start: string, end: string): number => {
-    if (!start || !end) return 0;
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
-    if (isNaN(startHour) || isNaN(endHour) || isNaN(startMinute) || isNaN(endMinute)) return 0;
-    const duration = (endHour + endMinute / 60) - (startHour + startMinute / 60);
-    return duration > 0 ? duration : 0;
-};
-
 // --- Child Components ---
 function ShiftRow({ 
     shift, 
@@ -89,13 +81,13 @@ function ShiftRow({
 }) {
     const actualStart = actuals?.actual_start_time || '';
     const actualEnd = actuals?.actual_end_time || '';
-    const breakHours = Number(actuals?.break_hours ?? 1);
+    const breakHours = Number(actuals?.break_hours ?? defaultBreakHours(calcDuration(actualStart, actualEnd)));
 
     const canEdit = isPast(parseISO(shift.date)) || isAdmin; // 管理者は常に編集可能
     const isSaved = !!shift.actual_id;
     const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][getDay(parseISO(shift.date))];
 
-    const workDuration = calculateDuration(actualStart, actualEnd) - (isNaN(breakHours) ? 0 : breakHours);
+    const workDuration = calcDuration(actualStart, actualEnd) - (isNaN(breakHours) ? 0 : breakHours);
 
     const handleTimeChange = (part: 'start' | 'end', newTime: string) => {
         onChange(shift.id, part === 'start' ? 'actual_start_time' : 'actual_end_time', newTime);
@@ -430,10 +422,13 @@ export default function MySchedulePage() {
             // 実績の表示用初期データをセット
             const initialActuals: Record<number, { actual_start_time: string; actual_end_time: string; break_hours: number; }> = {};
             shiftData.forEach(s => {
+                const start = s.actual_start_time?.substring(0, 5) || s.start_time?.substring(0, 5) || '';
+                const end = s.actual_end_time?.substring(0, 5) || s.end_time?.substring(0, 5) || '';
                 initialActuals[s.id] = {
-                    actual_start_time: s.actual_start_time?.substring(0, 5) || s.start_time?.substring(0, 5) || '',
-                    actual_end_time: s.actual_end_time?.substring(0, 5) || s.end_time?.substring(0, 5) || '',
-                    break_hours: s.break_hours !== null && s.break_hours !== undefined ? Number(s.break_hours) : 1
+                    actual_start_time: start,
+                    actual_end_time: end,
+                    // 休憩が未保存なら共通ルール（6時間以上の勤務で1時間）を初期値にする
+                    break_hours: s.break_hours !== null && s.break_hours !== undefined ? Number(s.break_hours) : defaultBreakHours(calcDuration(start, end))
                 };
             });
             setActualsState(initialActuals);
