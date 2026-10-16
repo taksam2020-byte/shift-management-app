@@ -10,12 +10,17 @@
     "db:init": "node scripts/init-pg-db.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "vapid:generate": "node scripts/generate-vapid-keys.mjs"
   },
   "dependencies": {
     "@holiday-jp/holiday_jp": "^2.5.1",
+    "@opennextjs/cloudflare": "^1.20.12",
     "@types/pg": "^8.15.5",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "csv-parse": "^7.0.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
@@ -28,7 +33,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -36,6 +40,7 @@
     "eslint-config-next": "15.5.2",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "wrangler": "^4.151.0"
   }
 }

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse, NextRequest } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { checkRole } from '@/lib/auth';
 
 // GET handler to fetch a single employee by ID

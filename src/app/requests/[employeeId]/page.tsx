@@ -11,6 +11,7 @@ import 'react-day-picker/dist/style.css';
 interface ShiftRequest { id: number; date: string; request_type: 'holiday' | 'work'; }
 interface Employee { id: number; name: string; request_type: 'holiday' | 'work'; }
 interface Shift { date: string; }
+interface Deadline { id: number; period_start: string; period_end: string; deadline: string; }
 
 export default function RequestShiftPage() {
   const params = useParams();
@@ -27,6 +28,15 @@ export default function RequestShiftPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+
+  // 管理者が設定した締切（取得に失敗しても画面はそのまま使える）
+  useEffect(() => {
+    fetch('/api/request-deadlines')
+      .then(res => (res.ok ? res.json() : []))
+      .then(setDeadlines)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchPageData = async () => {
@@ -157,6 +167,11 @@ export default function RequestShiftPage() {
     return { start, end };
   }, [currentMonth]);
 
+  const todayStr = format(startOfToday(), 'yyyy-MM-dd');
+  const upcomingDeadlines = deadlines
+    .filter(d => d.deadline >= todayStr)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+
   if (isLoading) return <p className="p-4 text-center">読み込み中...</p>;
   if (error) return <p className="p-4 text-center text-red-500">{error}</p>;
 
@@ -166,6 +181,17 @@ export default function RequestShiftPage() {
         <p className="text-xl text-gray-600">{employee?.name} さん</p>
         <h1 className="text-2xl font-bold">{pageTitle}</h1>
       </div>
+
+      {upcomingDeadlines.length > 0 && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-sm text-yellow-900">
+          {upcomingDeadlines.map(d => (
+            <p key={d.id}>
+              📅 {format(parseISO(d.period_start), 'M/d')}〜{format(parseISO(d.period_end), 'M/d')} の分は、
+              <span className="font-bold">{format(parseISO(d.deadline), 'M月d日（E）', { locale: ja })}</span> までに提出してください。
+            </p>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-4">

@@ -35,6 +35,37 @@ const migrations = [
       END $$;
     `,
   },
+  {
+    name: 'push_subscriptions',
+    sql: `CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      role TEXT NOT NULL,
+      employee_id INTEGER,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+  },
+  {
+    name: 'request_deadlines',
+    sql: `CREATE TABLE IF NOT EXISTS request_deadlines (
+      id SERIAL PRIMARY KEY,
+      period_start DATE NOT NULL,
+      period_end DATE NOT NULL,
+      deadline DATE NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+  },
+  {
+    name: 'notification_log',
+    sql: `CREATE TABLE IF NOT EXISTS notification_log (
+      kind TEXT NOT NULL,
+      key TEXT NOT NULL,
+      sent_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (kind, key)
+    )`,
+  },
 ];
 
 const client = await pool.connect();

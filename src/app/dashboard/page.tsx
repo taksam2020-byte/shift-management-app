@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import NotificationSettings from '@/components/NotificationSettings';
 
 interface User {
   id: number;
@@ -85,6 +86,10 @@ export default function DashboardPage() {
               <h2 className="text-xl font-bold">年間集計</h2>
               <p>複数月度の勤務時間を集計・比較します。</p>
             </Link>
+            <Link href="/admin/notifications" className="block p-6 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition-colors">
+              <h2 className="text-xl font-bold">通知・締切設定</h2>
+              <p>希望の締切日を決めて、スマホ通知でお知らせします。</p>
+            </Link>
             <Link href="/admin/holidays" className="block p-6 bg-gray-700 text-white rounded-lg shadow-md hover:bg-gray-800 transition-colors">
               <h2 className="text-xl font-bold">休業日設定</h2>
               <p>会社独自の休日を設定します。</p>
@@ -122,6 +127,12 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {!user.isViewer && (
+        <div className="mt-8 max-w-2xl">
+          <NotificationSettings isAdmin={user.isAdmin} />
+        </div>
+      )}
     </div>
   );
 }

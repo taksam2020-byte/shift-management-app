@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { checkRole, getSession } from '@/lib/auth';
 
 const ADMIN_COLUMNS = 'id, name, hourly_wage, group_name, max_weekly_hours, max_weekly_days, annual_income_limit, default_work_hours, request_type, created_at, initial_income, initial_income_year, hire_date, is_active';

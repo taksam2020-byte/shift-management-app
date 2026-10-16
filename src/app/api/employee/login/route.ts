@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db.mjs';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { setSessionCookie, toClientUser, SessionUser } from '@/lib/auth';
 
 export async function POST(request: Request) {

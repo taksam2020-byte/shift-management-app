@@ -1,0 +1,26 @@
+{
+  // Cloudflare Workers の設定ファイル
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shift-kun",
+  // OpenNext が作る本体に、毎日のリマインド処理（scheduled）を足した入口
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "shift-kun"
+    }
+  ],
+  // 毎日 0:00 UTC（日本時間 9:00）に締切リマインドを確認する
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}

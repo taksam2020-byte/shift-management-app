@@ -362,9 +362,23 @@ export default function SchedulePage() {
             await Promise.all(noteSavePromises);
           }
     
-          alert('シフトと備考を保存しました。');
           setInitialSchedule(schedule);
           setInitialDailyNotes(dailyNotes);
+
+          // シフトに変更があった従業員へスマホ通知を送るか確認する
+          const changedIds = [...new Set(shiftsToSave.map(s => s.employee_id))];
+          if (changedIds.length > 0 && window.confirm(`シフトと備考を保存しました。\n\nシフトが変わった ${changedIds.length} 人にスマホ通知を送りますか？\n（通知をオンにしている人だけに届きます）`)) {
+            const dates = shiftsToSave.map(s => s.date.substring(0, 10)).sort();
+            const notifyRes = await fetch('/api/push/notify-shifts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ employeeIds: changedIds, startDate: dates[0], endDate: dates[dates.length - 1] }),
+            });
+            const result = await notifyRes.json().catch(() => ({}));
+            alert(notifyRes.ok ? `${result.sent ?? 0} 台の端末に通知を送りました。` : (result.error || '通知の送信に失敗しました。'));
+          } else if (changedIds.length === 0) {
+            alert('シフトと備考を保存しました。');
+          }
     
         } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : '保存中にエラーが発生しました。';
